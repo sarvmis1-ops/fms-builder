@@ -1,0 +1,3174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Design Order MIS v5.0 — Sarv India</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://unpkg.com/@phosphor-icons/web"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:'Inter',sans-serif;background:#f1f5f9;}
+
+/* ── HEADER ── */
+header{
+  background:linear-gradient(135deg,#1e293b,#0f172a);
+  padding:14px 24px;display:flex;align-items:center;
+  justify-content:space-between;position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 12px rgba(0,0,0,.3);
+}
+.header-left{display:flex;align-items:center;gap:12px;}
+.header-left h1{font-size:1.3rem;font-weight:800;color:white;letter-spacing:-.3px;}
+.header-left .sub{font-size:.72rem;color:#94a3b8;}
+.header-btns{display:flex;gap:8px;}
+.hbtn{
+  padding:8px 16px;border:none;border-radius:8px;
+  font-weight:600;font-size:.82rem;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:.2s;
+}
+.hbtn:hover{transform:translateY(-1px);}
+.hbtn-red{background:#dc2626;color:white;}
+.hbtn-blue{background:#3b82f6;color:white;}
+.hbtn-green{background:#059669;color:white;}
+
+/* ── TABS ── */
+.tabs{
+  background:white;border-bottom:2px solid #e2e8f0;
+  padding:0 24px;display:flex;gap:0;overflow-x:auto;
+}
+.tab{
+  padding:14px 20px;border:none;background:none;cursor:pointer;
+  font-weight:600;font-size:.88rem;color:#6b7280;
+  border-bottom:3px solid transparent;white-space:nowrap;
+  transition:.2s;display:flex;align-items:center;gap:6px;
+}
+.tab.active{color:#3b82f6;border-bottom-color:#3b82f6;}
+.tab:hover{color:#1f2937;}
+
+/* ── MAIN LAYOUT ── */
+.app-body{
+  display:flex;height:calc(100vh - 112px);overflow:hidden;
+}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:320px;min-width:320px;background:white;
+  border-right:1px solid #e2e8f0;overflow-y:auto;
+  padding:16px;display:none;
+}
+.sidebar.active{display:block;}
+
+/* scrollbar */
+.sidebar::-webkit-scrollbar{width:5px;}
+.sidebar::-webkit-scrollbar-track{background:#f8fafc;}
+.sidebar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+
+/* ── FORM SECTIONS ── */
+.fsec{
+  background:#f8fafc;border:1px solid #e2e8f0;
+  border-radius:12px;padding:14px;margin-bottom:14px;
+}
+.fsec-title{
+  font-size:.88rem;font-weight:700;color:#1e40af;
+  border-bottom:2px solid #3b82f6;padding-bottom:8px;
+  margin-bottom:12px;display:flex;align-items:center;gap:7px;
+}
+.fg{margin-bottom:10px;}
+.fg label{
+  display:block;font-size:.75rem;font-weight:700;
+  color:#374151;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;
+}
+.fg input,.fg select{
+  width:100%;padding:9px 11px;border:1.5px solid #d1d5db;
+  border-radius:8px;font-size:.87rem;transition:.2s;
+  background:white;outline:none;
+}
+.fg input:focus,.fg select:focus{
+  border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1);
+}
+.fg input[readonly]{background:#f1f5f9;cursor:default;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
+/* ── SEARCH BOX ── */
+.search-box{
+  background:linear-gradient(135deg,#fef3c7,#fef9c3);
+  border:1.5px solid #fcd34d;border-radius:12px;
+  padding:14px;margin-bottom:14px;
+}
+.search-box h3{
+  font-weight:700;color:#78350f;font-size:.88rem;
+  margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.search-row{display:flex;gap:7px;}
+.search-row input{
+  flex:1;padding:9px 11px;border:1.5px solid #fcd34d;
+  border-radius:8px;font-size:.87rem;outline:none;
+}
+.search-row input:focus{border-color:#f59e0b;}
+.btn-search{
+  padding:9px 16px;background:#f59e0b;color:white;
+  border:none;border-radius:8px;font-weight:700;
+  cursor:pointer;white-space:nowrap;transition:.2s;
+}
+.btn-search:hover{background:#d97706;}
+
+/* ── BUTTONS ── */
+.btn-save{
+  width:100%;padding:12px;
+  background:linear-gradient(135deg,#3b82f6,#2563eb);
+  color:white;border:none;border-radius:9px;
+  font-weight:700;cursor:pointer;font-size:.9rem;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:.2s;
+}
+.btn-save:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(59,130,246,.35);}
+.btn-save:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.btn-outline{
+  flex:1;padding:10px;background:white;
+  border:1.5px solid #e2e8f0;border-radius:8px;
+  font-weight:600;cursor:pointer;font-size:.85rem;
+  transition:.2s;color:#374151;
+}
+.btn-outline:hover{border-color:#3b82f6;color:#3b82f6;}
+.btn-row{display:flex;gap:8px;margin-top:12px;}
+
+/* ── DATA PANEL ── */
+.data-panel{
+  flex:1;overflow:auto;padding:18px;display:none;
+}
+.data-panel.active{display:block;}
+
+.filter-bar{
+  background:white;border:1px solid #e2e8f0;
+  border-radius:12px;padding:14px;margin-bottom:14px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;
+}
+.filter-bar input,.filter-bar select{
+  padding:9px 10px;border:1.5px solid #e2e8f0;
+  border-radius:8px;font-size:.82rem;outline:none;transition:.2s;
+}
+.filter-bar input:focus,.filter-bar select:focus{border-color:#3b82f6;}
+.btn-filter{
+  padding:9px 14px;background:#3b82f6;color:white;
+  border:none;border-radius:8px;font-weight:700;
+  cursor:pointer;font-size:.82rem;transition:.2s;
+  display:flex;align-items:center;gap:5px;
+}
+.btn-filter:hover{background:#2563eb;}
+.btn-filter-clear{
+  padding:9px 14px;background:white;color:#6b7280;
+  border:1.5px solid #e2e8f0;border-radius:8px;font-weight:600;
+  cursor:pointer;font-size:.82rem;transition:.2s;
+}
+.btn-filter-clear:hover{border-color:#ef4444;color:#ef4444;}
+
+.tbl-wrap{background:white;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;}
+.tbl-scroll{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;}
+thead{background:#1e293b;color:white;}
+th{
+  padding:11px 14px;text-align:left;font-weight:700;
+  font-size:.78rem;text-transform:uppercase;
+  letter-spacing:.4px;white-space:nowrap;
+}
+td{
+  padding:10px 14px;border-bottom:1px solid #f1f5f9;
+  font-size:.85rem;white-space:nowrap;
+}
+tbody tr:hover{background:#f8fafc;}
+.badge{
+  display:inline-block;padding:3px 10px;border-radius:20px;
+  font-size:.75rem;font-weight:700;
+}
+.badge-pending{background:#fef3c7;color:#92400e;}
+.badge-progress{background:#dbeafe;color:#1e40af;}
+.badge-complete{background:#dcfce7;color:#166534;}
+.badge-notprint{background:#fee2e2;color:#991b1b;}
+.badge-printed{background:#dcfce7;color:#166534;}
+.badge-reprint{background:#fef3c7;color:#92400e;}
+
+.act-btn{
+  padding:5px 10px;border:none;border-radius:6px;
+  font-size:.78rem;font-weight:700;cursor:pointer;
+  transition:.15s;
+}
+.act-edit{background:#3b82f6;color:white;}
+.act-edit:hover{background:#2563eb;}
+.act-del{background:#ef4444;color:white;}
+.act-del:hover{background:#dc2626;}
+
+.tbl-footer{
+  padding:10px 14px;background:#f8fafc;
+  border-top:1px solid #e2e8f0;font-size:.82rem;color:#64748b;
+  display:flex;justify-content:space-between;align-items:center;
+}
+
+/* ── A4 SHEET ── */
+/* ══════════════════════════════════════════
+   A4 SHEET — Exact match FORMAT_pdf.PNG
+   Landscape: left=design grid, right=info panel
+══════════════════════════════════════════ */
+.a4{
+  width:297mm;min-height:210mm;background:white;
+  padding:6mm 6mm 6mm 6mm;
+  box-shadow:0 8px 30px rgba(0,0,0,.2);
+  border-radius:3px;box-sizing:border-box;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+
+/* ── TOP HEADER (centered logo + subtitle) ── */
+.a4-header{
+  text-align:center;
+  padding-bottom:5mm;
+  margin-bottom:3mm;
+  border-bottom:2.5px solid #1e293b;
+  position:relative;
+}
+.a4-header-cross{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  font-size:10px;color:#94a3b8;letter-spacing:2px;
+}
+.a4-title{
+  font-size:15pt;font-weight:900;letter-spacing:4px;
+  color:#1e293b;text-transform:uppercase;margin-top:4px;
+}
+.a4-subtitle{
+  font-size:7.5pt;font-weight:700;letter-spacing:3px;
+  color:#4b5563;text-transform:uppercase;margin-top:2px;
+}
+
+/* ── BODY: grid left + info right ── */
+.a4-body{
+  display:flex;flex:1;gap:5mm;margin-top:3mm;
+}
+
+/* ── LEFT: DESIGNS GRID ── */
+.a4-grid-wrap{
+  flex:1;min-width:0;
+}
+.a4-designs{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:4px;
+}
+
+/* ── DESIGN CARD ── */
+.design-card{
+  border:1px solid #e2e8f0;border-radius:4px;
+  background:white;text-align:center;
+  position:relative;
+  transition:box-shadow .15s,transform .15s,opacity .15s;
+  cursor:grab;overflow:hidden;
+}
+.design-card:active{cursor:grabbing;}
+.design-card img{
+  width:100%;object-fit:contain;
+  pointer-events:none;display:block;
+}
+
+/* ── DESIGN LABEL BAR (below image) ── */
+.design-card-bar{
+  background:#f1f5f9;
+  border-top:1px solid #e2e8f0;
+  padding:3px 4px 4px;
+  display:flex;align-items:baseline;justify-content:center;gap:4px;
+}
+/* Editable "DESIGN" text */
+.design-card-lbl{
+  font-size:6.5pt;font-weight:700;color:#6b7280;
+  text-transform:uppercase;letter-spacing:.5px;
+  outline:none;
+  border-bottom:1px dashed transparent;
+  cursor:text;
+  transition:border-color .15s;
+  min-width:20px;
+}
+.design-card-lbl:hover,
+.design-card-lbl:focus{
+  border-bottom-color:#3b82f6;
+  color:#3b82f6;
+}
+.design-card-num{
+  font-size:9pt;font-weight:900;color:#1e293b;
+}
+.blank-card{opacity:.3;border:1px dashed #d1d5db;cursor:default;}
+
+/* ── DELETE BUTTON (top-right ✕) ── */
+.card-del{
+  position:absolute;top:3px;right:3px;
+  width:18px;height:18px;border-radius:50%;
+  background:#ef4444;color:white;border:none;
+  font-size:.65rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .15s;
+  z-index:10;line-height:1;
+}
+.design-card:hover .card-del{opacity:1;}
+
+/* ── DRAG HANDLE (top-left ⠿) ── */
+.card-drag{
+  position:absolute;top:3px;left:3px;
+  width:16px;height:16px;border-radius:3px;
+  background:rgba(0,0,0,.08);color:#6b7280;
+  font-size:.7rem;cursor:grab;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .15s;
+  z-index:10;user-select:none;
+}
+.design-card:hover .card-drag{opacity:1;}
+
+/* ── DRAG STATES ── */
+.design-card.drag-over{
+  box-shadow:0 0 0 2px #3b82f6;
+  background:#eff6ff;transform:scale(1.02);
+}
+.design-card.dragging{opacity:.3;}
+
+/* ── RIGHT: INFO PANEL ── */
+.a4-info{
+  width:46mm;min-width:46mm;
+  border-left:1px solid #e2e8f0;
+  padding-left:4mm;
+  display:flex;flex-direction:column;
+  gap:0;
+}
+.info-row{
+  padding:2.5mm 0;
+  border-bottom:1px dashed #e2e8f0;
+}
+.info-row:last-child{border-bottom:none;}
+.info-label{
+  font-size:5.5pt;font-weight:800;letter-spacing:.8px;
+  color:#94a3b8;text-transform:uppercase;margin-bottom:1.5px;
+}
+.info-value{
+  font-size:9pt;font-weight:700;color:#1e293b;
+  line-height:1.2;
+}
+.info-value.accent{color:#e53e3e;font-weight:900;}   /* Order No red */
+.info-value.blue  {color:#2563eb;font-weight:900;}   /* Party Name blue */
+.info-value.red-num{color:#e53e3e;font-weight:900;}  /* Total Designs red */
+
+/* ── GRID META (count badge, screen only) ── */
+.grid-meta{
+  font-size:.75rem;color:#64748b;font-weight:600;
+  margin-bottom:4px;display:flex;align-items:center;gap:6px;
+}
+.grid-meta span{
+  background:#e0e7ff;color:#3730a3;padding:1px 8px;
+  border-radius:10px;font-weight:700;
+}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:9998;
+  padding:13px 18px;border-radius:10px;font-size:.88rem;
+  font-weight:600;max-width:340px;
+  display:flex;align-items:center;gap:10px;
+  animation:toastIn .3s ease;box-shadow:0 8px 24px rgba(0,0,0,.15);
+}
+.toast-success{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+.toast-error{background:#fee2e2;color:#991b1b;border:1px solid #fca5a5;}
+.toast-info{background:#dbeafe;color:#1e40af;border:1px solid #93c5fd;}
+@keyframes toastIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+/* ══════════════════════════════════════════════
+   POWERPOINT-STYLE PREVIEW LAYOUT
+   Left: thumbnail strip | Right: main stage
+══════════════════════════════════════════════ */
+.preview-area{
+  flex:1;display:none;overflow:hidden;
+  flex-direction:row;
+  background:#1e1e2e;
+  position:relative;
+}
+.preview-area.active{display:flex;}
+
+/* ─── LEFT: Thumbnail Strip ─── */
+.ppt-strip{
+  width:148px;
+  min-width:148px;
+  background:#16162a;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:10px 8px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  border-right:1px solid #2d2d4a;
+}
+.ppt-strip::-webkit-scrollbar{width:4px;}
+.ppt-strip::-webkit-scrollbar-track{background:#16162a;}
+.ppt-strip::-webkit-scrollbar-thumb{background:#3a3a5c;border-radius:2px;}
+
+/* Thumbnail item */
+.ppt-thumb{
+  position:relative;
+  cursor:pointer;
+  border-radius:4px;
+  border:2.5px solid transparent;
+  transition:border-color .15s, transform .1s;
+  background:#2a2a42;
+  overflow:hidden;
+}
+.ppt-thumb.active{
+  border-color:#4f46e5;
+  box-shadow:0 0 0 2px rgba(79,70,229,.35);
+}
+.ppt-thumb:hover:not(.active){
+  border-color:#4a4a6a;
+  transform:scale(1.02);
+}
+/* Scaled-down A4 landscape inside thumbnail */
+.ppt-thumb-inner{
+  width:100%;
+  aspect-ratio:297/210;
+  overflow:hidden;
+  position:relative;
+  background:white;
+}
+.ppt-thumb-inner .a4-scale-wrap{
+  width:297mm;
+  height:210mm;
+  transform-origin:top left;
+  pointer-events:none;
+  position:absolute;
+  top:0;left:0;
+}
+/* Page number badge below thumbnail */
+.ppt-thumb-label{
+  text-align:center;
+  font-size:.68rem;
+  font-weight:700;
+  color:#8b8baa;
+  padding:3px 0 4px;
+  letter-spacing:.3px;
+}
+.ppt-thumb.active .ppt-thumb-label{color:#a5b4fc;}
+
+/* ─── RIGHT: Main Stage ─── */
+.ppt-stage{
+  flex:1;
+  overflow:auto;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  padding:24px 28px;
+  background:#25253e;
+}
+.ppt-stage::-webkit-scrollbar{width:8px;height:8px;}
+.ppt-stage::-webkit-scrollbar-track{background:#1e1e2e;}
+.ppt-stage::-webkit-scrollbar-thumb{background:#3a3a5c;border-radius:4px;}
+
+/* The displayed page in the stage */
+.ppt-stage .a4,
+.ppt-stage .a4-page2{
+  box-shadow:0 8px 40px rgba(0,0,0,.6);
+  border-radius:2px;
+  flex-shrink:0;
+}
+
+/* ─── NO DATA ─── */
+.no-data{
+  text-align:center;padding:48px 20px;color:#94a3b8;
+}
+.no-data i{font-size:3rem;display:block;margin-bottom:12px;}
+
+/* ─── PDF VIEWER IN PREVIEW ─── */
+.pdf-viewer-wrap{
+  width:100%;height:100%;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:flex-start;
+  gap:12px;padding:16px;
+}
+.pdf-viewer-toolbar{
+  display:flex;gap:8px;align-items:center;
+  padding:10px 16px;background:#16162a;
+  border-radius:10px;border:1px solid #2d2d4a;
+  flex-shrink:0;
+}
+.pdf-viewer-toolbar .pvt-btn{
+  padding:7px 14px;border:none;border-radius:7px;
+  font-weight:700;font-size:.8rem;cursor:pointer;
+  display:flex;align-items:center;gap:6px;
+  transition:.15s;
+}
+.pvt-btn-green{background:#059669;color:white;}
+.pvt-btn-green:hover{background:#047857;}
+.pvt-btn-blue{background:#3b82f6;color:white;}
+.pvt-btn-blue:hover{background:#2563eb;}
+.pvt-btn-orange{background:#f59e0b;color:white;}
+.pvt-btn-orange:hover{background:#d97706;}
+.pdf-iframe{
+  flex:1;width:100%;max-width:900px;
+  border:2px solid #2d2d4a;border-radius:8px;
+  background:white;
+}
+
+/* ════════════════════════════════════════
+   PAGE 2 — Production & Packing
+════════════════════════════════════════ */
+.a4-page2{margin-top:0;}
+
+/* top meta strip */
+.p2-meta{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:6px;padding:5px 0 8px;
+  border-bottom:2px solid #1e293b;margin-bottom:6mm;
+}
+.p2-meta-item{display:flex;flex-direction:column;gap:2px;}
+.p2-lbl{font-size:5.5pt;font-weight:800;color:#94a3b8;text-transform:uppercase;letter-spacing:.7px;}
+.p2-val{font-size:9pt;font-weight:700;color:#1e293b;}
+
+/* production grid */
+.p2-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:5px;margin-bottom:6mm;
+}
+.p2-card{
+  border:1px solid #e2e8f0;border-radius:5px;
+  padding:6px 8px;background:#f8fafc;
+}
+.p2-card-label{
+  font-size:5.5pt;font-weight:800;color:#94a3b8;
+  text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;
+}
+.p2-card-value{
+  font-size:10pt;font-weight:700;color:#1e293b;min-height:14px;
+}
+
+/* notes */
+.p2-notes{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6mm;}
+.p2-note-box{
+  border:1.5px solid #e2e8f0;border-radius:6px;padding:8px 10px;
+  background:#fafafa;min-height:30mm;
+}
+.p2-note-title{
+  font-size:6pt;font-weight:800;color:#475569;text-transform:uppercase;
+  letter-spacing:.5px;margin-bottom:6px;border-bottom:1px solid #e2e8f0;
+  padding-bottom:4px;
+}
+.p2-note-body{
+  font-size:9pt;color:#1e293b;line-height:1.5;
+  white-space:pre-wrap;word-break:break-word;
+}
+
+/* signature strip */
+.p2-sign{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
+  border-top:1px solid #e2e8f0;padding-top:4mm;
+}
+.p2-sign-box{text-align:center;}
+.p2-sign-line{
+  height:22px;border-bottom:1.5px solid #1e293b;
+  margin:0 8px 4px;
+}
+.p2-sign-lbl{
+  font-size:5.5pt;font-weight:700;color:#64748b;
+  text-transform:uppercase;letter-spacing:.4px;
+}
+
+/* ══════════════════════════════════════════
+   PRINT — body gets .printing class from JS
+   before window.print(), removed after
+══════════════════════════════════════════ */
+@media print {
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+  body { background:white!important; margin:0!important; padding:0!important; }
+
+  /* Hide everything except our injected print container */
+  body > *:not(#_print_mount) { display:none!important; }
+
+  /* Print mount: block flow of A4 pages */
+  #_print_mount {
+    display:block!important;
+    width:297mm!important;
+  }
+
+  /* Each A4 page = one printed page */
+  #_print_mount .a4,
+  #_print_mount .a4-page2 {
+    display:block!important;
+    box-shadow:none!important;
+    width:297mm!important;
+    min-height:210mm!important;
+    margin:0!important;
+    padding:6mm!important;
+    page-break-after:always!important;
+    break-after:page!important;
+    overflow:hidden!important;
+    background:white!important;
+  }
+  #_print_mount .a4:last-child,
+  #_print_mount .a4-page2:last-child {
+    page-break-after:avoid!important;
+    break-after:avoid!important;
+  }
+  #_print_mount .card-del,
+  #_print_mount .card-drag,
+  #_print_mount .no-print { display:none!important; }
+  #_print_mount .design-card-lbl { border-bottom:none!important; }
+
+  @page { size:A4 landscape; margin:0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════ -->
+<header>
+  <div class="header-left">
+    <i class="ph ph-palette text-3xl text-blue-400"></i>
+    <div>
+      <h1>Design Order MIS <span style="color:#3b82f6;font-size:.9rem;">v5.0</span></h1>
+      <div class="sub">Sarv India Home Furnishing · Mink Blanket Unit-2</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="header-btns">
+      <button class="hbtn hbtn-red" onclick="resetForm()">
+        <i class="ph ph-arrow-counter-clockwise"></i> Reset
+      </button>
+      <button class="hbtn hbtn-blue" onclick="doPrint()">
+        <i class="ph ph-printer"></i> Print
+      </button>
+      <button class="hbtn hbtn-green" onclick="downloadPDF()">
+        <i class="ph ph-file-pdf"></i> PDF
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════
+     TABS
+══════════════════════════════════════════ -->
+<div class="tabs">
+  <button class="tab active" id="tab-create" onclick="switchTab('create',this)">
+    <i class="ph ph-plus-circle"></i> Create Order
+  </button>
+  <button class="tab" id="tab-search" onclick="switchTab('search',this)">
+    <i class="ph ph-magnifying-glass"></i> Search &amp; Edit
+  </button>
+  <button class="tab" id="tab-data" onclick="switchTab('data',this)">
+    <i class="ph ph-table"></i> All Orders
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════
+     APP BODY
+══════════════════════════════════════════ -->
+<div class="app-body">
+
+  <!-- ─── SIDEBAR: CREATE ─── -->
+  <div class="sidebar active" id="sb-create">
+    <!-- ORDER DETAILS -->
+    <div class="fsec">
+      <div class="fsec-title"><i class="ph ph-list-dashes" style="color:#3b82f6"></i> Order Details</div>
+
+      <div class="fg">
+        <label>Order No. <span style="font-weight:400;color:#94a3b8;">(auto if empty)</span></label>
+        <input id="c-orderNo" style="text-transform:uppercase" placeholder="e.g. ORD-2024-001">
+      </div>
+      <div class="fg">
+        <label>Party Name <span style="color:#ef4444">*</span></label>
+        <input id="c-party" style="text-transform:uppercase" placeholder="Enter party name">
+      </div>
+      <div class="fg">
+        <label>Brand Name</label>
+        <input id="c-brand" style="text-transform:uppercase" placeholder="e.g. ROYAL COMFORT">
+      </div>
+      <div class="fg">
+        <label>Fabric Name</label>
+        <input id="c-fabric" placeholder="e.g. Mink, Fleece, Wool">
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label>Category</label>
+          <select id="c-category">
+            <option value="">Select</option>
+            <option>Premium</option><option>Standard</option>
+            <option>Budget</option><option>Luxury</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Bed Size</label>
+          <select id="c-bedSize">
+            <option value="">Select</option>
+            <option>Single</option><option>Double</option>
+            <option>Queen</option><option>King</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label>Blanket Ply</label>
+          <select id="c-ply">
+            <option value="">Select</option>
+            <option>2-Ply</option><option>3-Ply</option>
+            <option>4-Ply</option><option>5-Ply</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Weight (GSM)</label>
+          <input id="c-weight" type="number" placeholder="e.g. 450">
+        </div>
+      </div>
+    </div>
+
+    <!-- DESIGN INFO -->
+    <div class="fsec">
+      <div class="fsec-title"><i class="ph ph-image" style="color:#7c3aed"></i> Design Info</div>
+
+      <div class="row2">
+        <div class="fg">
+          <label>Total Designs</label>
+          <input id="c-totalDesigns" type="number" readonly placeholder="Auto">
+        </div>
+        <div class="fg">
+          <label>Color Count</label>
+          <input id="c-colors" type="number" placeholder="e.g. 8">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Designer Name</label>
+        <input id="c-designer" style="text-transform:uppercase" placeholder="e.g. RAHUL">
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label>Status</label>
+          <select id="c-status">
+            <option value="Pending">Pending</option>
+            <option value="In_Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Print Status</label>
+          <select id="c-printStatus">
+            <option value="Not_Printed">Not Printed</option>
+            <option value="Printed">Printed</option>
+            <option value="Re_Printing">Re-Printing</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Upload Designs <span style="font-weight:400;color:#94a3b8;font-size:.72rem;">(Select for current page)</span></label>
+        <input id="c-images" type="file" accept="image/*" multiple>
+      </div>
+
+      <!-- Page Navigator -->
+      <div id="page-nav" style="margin-bottom:8px;">
+        <div style="font-size:.72rem;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">
+          Design Pages <span id="page-count-badge" style="background:#e0e7ff;color:#3730a3;padding:1px 8px;border-radius:10px;font-weight:700;font-size:.75rem;">Page 1 / 1</span>
+        </div>
+        <div id="page-tabs" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;"></div>
+        <div style="display:flex;gap:6px;">
+          <button onclick="insertPage()" style="flex:1;padding:7px 10px;background:#4f46e5;color:white;border:none;border-radius:7px;font-weight:600;font-size:.8rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;">
+            <i class="ph ph-plus"></i> Insert Page
+          </button>
+          <button onclick="deleteCurrPage()" id="btn-del-page" style="padding:7px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:7px;font-weight:600;font-size:.8rem;cursor:pointer;display:none;">
+            <i class="ph ph-trash-simple"></i> Delete Page
+          </button>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-outline" onclick="clearImages()">
+          <i class="ph ph-x"></i> Clear Page
+        </button>
+        <button class="btn-save" id="btn-save" onclick="saveOrder()">
+          <i class="ph ph-floppy-disk"></i> Save to Sheets
+        </button>
+      </div>
+    </div>
+
+    <!-- PRODUCTION DETAILS -->
+    <div class="fsec">
+      <div class="fsec-title"><i class="ph ph-factory" style="color:#b45309"></i> Production Details</div>
+
+      <div class="row2">
+        <div class="fg">
+          <label>Sattan</label>
+          <select id="c-sattan">
+            <option value="">Select</option>
+            <option>4'' NORMAL</option>
+            <option>5'' NORMAL</option>
+            <option>5'' PREMIUM</option>
+            <option>6'' PREMIUM</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Emboss</label>
+          <select id="c-emboss">
+            <option value="">Select</option>
+            <option>YES</option>
+            <option>NO</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label>Roll Qty</label>
+          <input id="c-rollQty" type="number" placeholder="e.g. 100">
+        </div>
+        <div class="fg">
+          <label>Packing Bore</label>
+          <input id="c-packingBore" placeholder="e.g. 3 INCH">
+        </div>
+      </div>
+      <div class="fg">
+        <label>Labels</label>
+        <input id="c-labels" placeholder="Label details">
+      </div>
+      <div class="fg">
+        <label>Printing Unit</label>
+        <select id="c-printingUnit">
+          <option value="">Select</option>
+          <option>UNIT-1</option>
+          <option>UNIT-2</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- NOTES & PACKING -->
+    <div class="fsec">
+      <div class="fsec-title"><i class="ph ph-note-pencil" style="color:#0369a1"></i> Notes &amp; Packing</div>
+
+      <div class="fg">
+        <label>Note for Master</label>
+        <textarea id="c-noteMaster" rows="2" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.87rem;font-family:inherit;resize:vertical;outline:none;" placeholder="Instructions for master..."></textarea>
+      </div>
+      <div class="fg">
+        <label>Note for Packing Contractor</label>
+        <textarea id="c-notePacking" rows="2" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.87rem;font-family:inherit;resize:vertical;outline:none;" placeholder="Instructions for packing contractor..."></textarea>
+      </div>
+      <div class="row2">
+        <div class="fg">
+          <label>Standard Bora Packing</label>
+          <input id="c-boraPacking" placeholder="e.g. 10 PCS">
+        </div>
+        <div class="fg">
+          <label>Standard Box Packing</label>
+          <input id="c-boxPacking" placeholder="e.g. 5 PCS">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SIDEBAR: SEARCH & EDIT ─── -->
+  <div class="sidebar" id="sb-search">
+    <div class="search-box">
+      <h3><i class="ph ph-magnifying-glass"></i> Search Previous Order</h3>
+      <div class="search-row">
+        <input id="s-query" style="text-transform:uppercase" placeholder="Enter Order No...">
+        <button class="btn-search" onclick="doSearch()">
+          <i class="ph ph-check"></i> Search
+        </button>
+      </div>
+    </div>
+
+    <!-- EDIT FORM — hidden until search result -->
+    <div id="edit-form" style="display:none;">
+      <div class="fsec">
+        <div class="fsec-title"><i class="ph ph-pencil-simple" style="color:#059669"></i> Edit Order</div>
+
+        <div class="fg">
+          <label>Order No. (read-only)</label>
+          <input id="e-orderNo" readonly style="background:#f1f5f9;font-weight:700;color:#3b82f6;">
+        </div>
+        <div class="fg">
+          <label>Party Name <span style="color:#ef4444">*</span></label>
+          <input id="e-party" style="text-transform:uppercase">
+        </div>
+        <div class="fg">
+          <label>Brand Name</label>
+          <input id="e-brand" style="text-transform:uppercase">
+        </div>
+        <div class="fg">
+          <label>Fabric Name</label>
+          <input id="e-fabric">
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>Category</label>
+            <select id="e-category">
+              <option value="">Select</option>
+              <option>Premium</option><option>Standard</option>
+              <option>Budget</option><option>Luxury</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Bed Size</label>
+            <select id="e-bedSize">
+              <option value="">Select</option>
+              <option>Single</option><option>Double</option>
+              <option>Queen</option><option>King</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>Blanket Ply</label>
+            <select id="e-ply">
+              <option value="">Select</option>
+              <option>2-Ply</option><option>3-Ply</option>
+              <option>4-Ply</option><option>5-Ply</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Weight (GSM)</label>
+            <input id="e-weight" type="number">
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>Total Designs</label>
+            <input id="e-totalDesigns" type="number">
+          </div>
+          <div class="fg">
+            <label>Color Count</label>
+            <input id="e-colors" type="number">
+          </div>
+        </div>
+        <div class="fg">
+          <label>Designer Name</label>
+          <input id="e-designer" style="text-transform:uppercase">
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>Status</label>
+            <select id="e-status">
+              <option value="Pending">Pending</option>
+              <option value="In_Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Print Status</label>
+            <select id="e-printStatus">
+              <option value="Not_Printed">Not Printed</option>
+              <option value="Printed">Printed</option>
+              <option value="Re_Printing">Re-Printing</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- PRODUCTION DETAILS (Edit) -->
+      <div class="fsec">
+        <div class="fsec-title"><i class="ph ph-factory" style="color:#b45309"></i> Production Details</div>
+        <div class="row2">
+          <div class="fg">
+            <label>Sattan</label>
+            <select id="e-sattan">
+              <option value="">Select</option>
+              <option>4'' NORMAL</option>
+              <option>5'' NORMAL</option>
+              <option>5'' PREMIUM</option>
+              <option>6'' PREMIUM</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Emboss</label>
+            <select id="e-emboss">
+              <option value="">Select</option>
+              <option>YES</option>
+              <option>NO</option>
+            </select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>Roll Qty</label>
+            <input id="e-rollQty" type="number" placeholder="e.g. 100">
+          </div>
+          <div class="fg">
+            <label>Packing Bore</label>
+            <input id="e-packingBore" placeholder="e.g. 3 INCH">
+          </div>
+        </div>
+        <div class="fg">
+          <label>Labels</label>
+          <input id="e-labels" placeholder="Label details">
+        </div>
+        <div class="fg">
+          <label>Printing Unit</label>
+          <select id="e-printingUnit">
+            <option value="">Select</option>
+            <option>UNIT-1</option>
+            <option>UNIT-2</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- NOTES & PACKING (Edit) -->
+      <div class="fsec">
+        <div class="fsec-title"><i class="ph ph-note-pencil" style="color:#0369a1"></i> Notes &amp; Packing</div>
+        <div class="fg">
+          <label>Note for Master</label>
+          <textarea id="e-noteMaster" rows="2" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.87rem;font-family:inherit;resize:vertical;outline:none;" placeholder="Instructions for master..."></textarea>
+        </div>
+        <div class="fg">
+          <label>Note for Packing Contractor</label>
+          <textarea id="e-notePacking" rows="2" style="width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.87rem;font-family:inherit;resize:vertical;outline:none;" placeholder="Instructions for packing contractor..."></textarea>
+        </div>
+        <div class="row2">
+          <div class="fg">
+            <label>Standard Bora Packing</label>
+            <input id="e-boraPacking" placeholder="e.g. 10 PCS">
+          </div>
+          <div class="fg">
+            <label>Standard Box Packing</label>
+            <input id="e-boxPacking" placeholder="e.g. 5 PCS">
+          </div>
+        </div>
+      </div>
+
+      <!-- PDF & Designs section in EDIT form -->
+      <div class="fsec" style="background:linear-gradient(135deg,#fef3c7,#fef9c3);border-color:#fcd34d;">
+        <div class="fsec-title" style="color:#92400e;border-bottom-color:#f59e0b;">
+          <i class="ph ph-file-pdf"></i> PDF &amp; Designs
+        </div>
+
+        <!-- Existing PDF link (shown if available) -->
+        <div id="e-pdf-existing" style="display:none;padding:10px;background:white;border-radius:8px;margin-bottom:10px;border:1px solid #fcd34d;">
+          <div style="font-size:.7rem;color:#78350f;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px;">
+            <i class="ph ph-check-circle" style="color:#16a34a"></i> Current PDF in Drive
+          </div>
+          <a id="e-pdf-link" href="#" target="_blank" rel="noopener" style="color:#0369a1;font-weight:700;font-size:.85rem;text-decoration:underline;display:inline-flex;align-items:center;gap:5px;">
+            <i class="ph ph-arrow-square-out"></i> Open PDF in Drive
+          </a>
+        </div>
+
+        <div class="fg" style="margin-bottom:6px;">
+          <label>Upload New Designs <span style="font-weight:400;color:#94a3b8;text-transform:none;">(replaces existing PDF)</span></label>
+          <input id="e-images" type="file" accept="image/*" multiple>
+        </div>
+        <div style="font-size:.72rem;color:#78350f;line-height:1.5;background:rgba(255,255,255,.5);padding:8px 10px;border-radius:6px;">
+          📁 Skip karoge → existing PDF preserve hogi<br>
+          📤 Upload karoge → new PDF Drive me replace ho jayegi
+        </div>
+        <div id="e-img-count" style="display:none;margin-top:8px;padding:6px 10px;background:#fff;border-radius:6px;font-size:.78rem;color:#78350f;font-weight:600;border:1px solid #fcd34d;">
+          <i class="ph ph-images"></i> <span id="e-img-count-num">0</span> new images selected
+        </div>
+      </div>
+
+      <div class="fsec" style="background:white;padding:12px;">
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn-outline" onclick="cancelEdit()">Cancel</button>
+          <button class="btn-save" id="btn-update" onclick="updateOrder()">
+            <i class="ph ph-check-circle"></i> Update Order
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── DATA PANEL ─── -->
+  <div class="data-panel" id="dp-data">
+    <!-- FILTER BAR -->
+    <div class="filter-bar">
+      <input id="f-orderNo"    placeholder="🔍 Order No.">
+      <input id="f-party"      placeholder="🏢 Party Name">
+      <input id="f-brand"      placeholder="🏷 Brand">
+      <input id="f-designer"   placeholder="👤 Designer">
+      <select id="f-status">
+        <option value="">All Status</option>
+        <option>Pending</option><option>In_Progress</option><option>Completed</option>
+      </select>
+      <select id="f-printStatus">
+        <option value="">All Print</option>
+        <option>Not_Printed</option><option>Printed</option><option>Re_Printing</option>
+      </select>
+      <button class="btn-filter" onclick="applyFilters()">
+        <i class="ph ph-funnel"></i> Filter
+      </button>
+      <button class="btn-filter-clear" onclick="clearFilters()">Clear</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="tbl-wrap">
+      <div class="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Order No.</th>
+              <th>Party Name</th>
+              <th>Brand</th>
+              <th>Fabric</th>
+              <th>Bed Size</th>
+              <th>Designs</th>
+              <th>Designer</th>
+              <th>Status</th>
+              <th>Print Status</th>
+              <th>Timestamp</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbl-body">
+            <tr>
+              <td colspan="12" class="no-data">
+                <i class="ph ph-database"></i>
+                Click "All Orders" tab to load data
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tbl-footer">
+        <span id="tbl-count">Records: —</span>
+        <button onclick="loadAllOrders()" style="background:none;border:none;color:#3b82f6;cursor:pointer;font-weight:600;font-size:.82rem;">
+          <i class="ph ph-arrows-clockwise"></i> Refresh
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PREVIEW AREA: PowerPoint Style ─── -->
+  <div class="preview-area active" id="preview-area">
+
+    <!-- LEFT: Thumbnail Strip -->
+    <div class="ppt-strip" id="ppt-strip">
+      <!-- Thumbnails rendered by JS -->
+    </div>
+
+    <!-- RIGHT: Main Stage (shows active page at full size) -->
+    <div class="ppt-stage" id="ppt-stage">
+      <!-- Active page rendered here by JS -->
+    </div>
+
+    <!-- HIDDEN: All pages container (for print only) -->
+    <div id="design-pages-container" style="display:none;"></div>
+
+    <!-- p2-storage: printArea2 always stays here, NEVER moved -->
+    <div id="p2-storage" style="display:none;position:absolute;inset:0;overflow:auto;background:#25253e;align-items:flex-start;justify-content:center;padding:24px 28px;z-index:2;">
+      <!-- printArea2: LIVE production page — shown/hidden via p2-storage display -->
+      <div id="printArea2" class="a4 a4-page2" style="box-shadow:0 8px 40px rgba(0,0,0,.6);border-radius:2px;flex-shrink:0;cursor:default;">
+
+      <div class="a4-header">
+        <div class="a4-header-cross">⊕</div>
+        <div class="a4-title">SARV INDIA HOME FURNISHING</div>
+        <div class="a4-subtitle">PRODUCTION &amp; PACKING DETAILS</div>
+      </div>
+
+      <!-- Top meta strip -->
+      <div class="p2-meta">
+        <div class="p2-meta-item"><span class="p2-lbl">ORDER NO.</span><span class="p2-val accent" id="p2-orderNo">—</span></div>
+        <div class="p2-meta-item"><span class="p2-lbl">PARTY NAME</span><span class="p2-val blue" id="p2-party">—</span></div>
+        <div class="p2-meta-item"><span class="p2-lbl">DATE</span><span class="p2-val" id="p2-date">—</span></div>
+        <div class="p2-meta-item"><span class="p2-lbl">PRINTING UNIT</span><span class="p2-val" id="p2-printingUnit">—</span></div>
+      </div>
+
+      <!-- Production grid -->
+      <div class="p2-grid">
+        <div class="p2-card"><div class="p2-card-label">SATTAN</div><div class="p2-card-value" id="p2-sattan">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">EMBOSS</div><div class="p2-card-value" id="p2-emboss">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">LABELS</div><div class="p2-card-value" id="p2-labels">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">ROLL QTY</div><div class="p2-card-value" id="p2-rollQty">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">PACKING BORE</div><div class="p2-card-value" id="p2-packingBore">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">STANDARD BORA PACKING</div><div class="p2-card-value" id="p2-boraPacking">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">STANDARD BOX PACKING</div><div class="p2-card-value" id="p2-boxPacking">—</div></div>
+        <div class="p2-card"><div class="p2-card-label">BED SIZE</div><div class="p2-card-value" id="p2-bedSize">—</div></div>
+      </div>
+
+      <!-- Packing Details Table -->
+      <div style="margin-bottom:5mm;">
+        <div style="font-size:7pt;font-weight:900;color:#1e293b;text-transform:uppercase;letter-spacing:1px;text-align:center;margin-bottom:3px;border:1px solid #1e293b;background:#f1f5f9;padding:3px;">
+          PACKING DETAILS BY CONTACTOR
+        </div>
+        <table id="packing-table" style="width:100%;border-collapse:collapse;font-size:7pt;">
+          <thead>
+            <tr style="background:#1e293b;color:white;">
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">START<br>DATE</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">END<br>DATE</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">TOTAL<br>PCS</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;">1ST</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">RASCHEL<br>2ND</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">PRINTING<br>2ND</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">FINISH<br>2ND</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">BORDER<br>CUT</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">OVER<br>WEIGHT</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">UNDER<br>WEIGHT</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;white-space:nowrap;">TOTAL<br>2ND %</th>
+              <th style="border:1px solid #334155;padding:3px 4px;text-align:center;">CHECK</th>
+              <th class="no-print" style="border:1px solid #334155;padding:3px 4px;text-align:center;">DEL</th>
+            </tr>
+          </thead>
+          <tbody id="packing-tbody"></tbody>
+        </table>
+        <div class="no-print" style="margin-top:4px;display:flex;gap:6px;">
+          <button onclick="addPackingRow()" style="padding:4px 10px;background:#4f46e5;color:white;border:none;border-radius:5px;font-size:.75rem;font-weight:600;cursor:pointer;">
+            <i class="ph ph-plus"></i> Add Row
+          </button>
+          <button onclick="clearPackingRows()" style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:5px;font-size:.75rem;font-weight:600;cursor:pointer;">
+            Clear Rows
+          </button>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <div class="p2-notes">
+        <div class="p2-note-box">
+          <div class="p2-note-title">📋 NOTE FOR MASTER</div>
+          <div class="p2-note-body" id="p2-noteMaster">—</div>
+        </div>
+        <div class="p2-note-box">
+          <div class="p2-note-title">📦 NOTE FOR PACKING CONTRACTOR</div>
+          <div class="p2-note-body" id="p2-notePacking">—</div>
+        </div>
+      </div>
+
+      <!-- Signature strip -->
+      <div class="p2-sign">
+        <div class="p2-sign-box"><div class="p2-sign-line"></div><div class="p2-sign-lbl">CHECKED BY</div></div>
+        <div class="p2-sign-box"><div class="p2-sign-line"></div><div class="p2-sign-lbl">MASTER SIGN</div></div>
+        <div class="p2-sign-box"><div class="p2-sign-line"></div><div class="p2-sign-lbl">PACKING CONTRACTOR</div></div>
+        <div class="p2-sign-box"><div class="p2-sign-line"></div><div class="p2-sign-lbl">AUTHORISED BY</div></div>
+      </div>
+
+    </div><!-- end #printArea2 -->
+    </div><!-- end #p2-storage -->
+
+  </div><!-- end .preview-area -->
+
+</div><!-- end .app-body -->
+
+<!-- ══════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════ -->
+<script>
+// ═══════════════════════════════════════════════════════════
+// ⚠️  CONFIG — APPS SCRIPT DEPLOYED WEB APP URL YAHAN PASTE KARO
+// ═══════════════════════════════════════════════════════════
+// 1. Apps Script Editor → Deploy → New Deployment
+// 2. Type: Web App | Execute as: Me | Access: Anyone
+// 3. Deploy → Copy the URL (ending with /exec)
+// 4. Paste it below — replace the placeholder string:
+//
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyde-dIxm5bt-1KoBNXumqXA_SE19yHnVcNKeXrxLp5w4x_5oXT6Z-u6oTHQhbWD2RX/exec";
+//
+// Example:
+// // const GAS_URL = "https://script.google.com/macros/s/AKfyc..../exec";
+// ═══════════════════════════════════════════════════════════
+
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let allRows         = [];
+let editingNo       = null;
+let editPdfLink     = "";       // Stores PDF_Link from searched order
+let _showPdfViewer  = false;    // When true, preview shows PDF iframe
+// Multi-page image store: array of arrays
+// allPages[0] = images for Page 1, allPages[1] = Page 2, etc.
+let allPages        = [[]];    // Create tab: starts with 1 empty page
+let currPageIdx     = 0;       // Currently active page (0-based)
+let editImgDataURLs = [];      // Edit tab: single flat array (legacy)
+
+const IMGS_PER_PAGE = 8;       // Max designs per A4 page
+
+// ─────────────────────────────────────────
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+function init() {
+  if (!GAS_URL || GAS_URL === "PASTE_YOUR_DEPLOYED_WEB_APP_URL_HERE" || !GAS_URL.startsWith("https://script.google.com")) {
+    showConfigError();
+    return;
+  }
+  setDate();
+  allPages    = [[]];
+  currPageIdx = 0;
+  _pptActivePage = 0; // PPT stage starts on page 0
+  _renderPPT();
+  _renderPageTabs();
+  bindFormSync();
+  addPackingRow();
+}
+
+function showConfigError() {
+  document.body.innerHTML = `
+    <div style="position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1e3a5f);display:flex;align-items:center;justify-content:center;padding:20px;">
+      <div style="background:white;border-radius:16px;padding:40px;max-width:560px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,.4);">
+        <div style="font-size:3rem;text-align:center;margin-bottom:12px;">⚠️</div>
+        <h2 style="font-size:1.5rem;font-weight:800;color:#1e293b;text-align:center;margin-bottom:8px;">Configuration Required</h2>
+        <p style="color:#64748b;text-align:center;margin-bottom:24px;font-size:.9rem;">
+          Apps Script Web App URL set nahi hai. <br>HTML file ke <code style="background:#fef3c7;padding:2px 6px;border-radius:4px;font-size:.8rem;">&lt;script&gt;</code> tag ke top mein GAS_URL constant mein paste karo.
+        </p>
+        <div style="background:#1e293b;color:#e2e8f0;padding:16px;border-radius:8px;font-family:monospace;font-size:.82rem;line-height:1.7;overflow-x:auto;">
+          <span style="color:#64748b;">// Line ~782 in index.html</span><br>
+          <span style="color:#c084fc;">const</span> <span style="color:#fbbf24;">GAS_URL</span> = <span style="color:#86efac;">"https://script.google.com/macros/s/AKfyc.../exec"</span>;
+        </div>
+        <div style="margin-top:20px;padding:14px;background:#f1f5f9;border-radius:8px;font-size:.82rem;color:#475569;line-height:1.7;">
+          <strong style="color:#1e293b;">URL kahan se milega:</strong><br>
+          1. Apps Script Editor kholo<br>
+          2. Deploy → New Deployment<br>
+          3. Type: <em>Web App</em> | Execute as: <em>Me</em> | Access: <em>Anyone</em><br>
+          4. Deploy → Copy the <em>/exec</em> URL<br>
+          5. HTML file ke script mein <code style="background:#fef3c7;padding:1px 5px;border-radius:3px;">GAS_URL</code> mein paste karo<br>
+          6. File save karke browser refresh karo
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────
+// TAB SWITCHING
+// ─────────────────────────────────────────
+function switchTab(tab, el) {
+  // Reset all tabs
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".sidebar").forEach(s => {
+    s.classList.remove("active");
+    s.style.display = "none";
+  });
+  document.getElementById("dp-data").classList.remove("active");
+  document.getElementById("preview-area").classList.remove("active");
+
+  el.classList.add("active");
+
+  if (tab === "create") {
+    document.getElementById("sb-create").classList.add("active");
+    document.getElementById("sb-create").style.display = "block";
+    document.getElementById("preview-area").classList.add("active");
+    _gridMode = "create";
+    _renderPPT();
+    _renderPageTabs();
+  } else if (tab === "search") {
+    document.getElementById("sb-search").classList.add("active");
+    document.getElementById("sb-search").style.display = "block";
+    document.getElementById("preview-area").classList.add("active");
+    // Only switch to edit mode if an order is actively loaded
+    if (editingNo) {
+      _gridMode = "edit";
+      // Restore PDF viewer if order has saved PDF
+      if (editPdfLink && _showPdfViewer) {
+        _pptActivePage = -1;
+      } else if (editImgDataURLs.length > 0) {
+        allPages    = [editImgDataURLs];
+        currPageIdx = 0;
+        _pptActivePage = 0;
+      }
+    } else {
+      _gridMode = "create";
+    }
+    _renderPPT();
+    _renderPageTabs();
+  } else if (tab === "data") {
+    document.getElementById("dp-data").classList.add("active");
+    loadAllOrders();
+  }
+}
+
+// ─────────────────────────────────────────
+// FORM LIVE SYNC → A4 PREVIEW
+// ─────────────────────────────────────────
+
+// ═══ MASTER SYNC: Push ALL form values → Production Page (p2-*) ═══
+// Called every time production page is viewed + before PDF generation
+// This is the SINGLE SOURCE OF TRUTH — event listeners are just for live preview
+function _syncP2FromActiveForm() {
+  const isEdit = _gridMode === "edit" && editingNo;
+  const prefix = isEdit ? "e-" : "c-";
+
+  const mapping = {
+    "orderNo":      "p2-orderNo",
+    "party":        "p2-party",
+    "sattan":       "p2-sattan",
+    "emboss":       "p2-emboss",
+    "labels":       "p2-labels",
+    "rollQty":      "p2-rollQty",
+    "packingBore":  "p2-packingBore",
+    "printingUnit": "p2-printingUnit",
+    "boraPacking":  "p2-boraPacking",
+    "boxPacking":   "p2-boxPacking",
+    "bedSize":      "p2-bedSize",
+    "noteMaster":   "p2-noteMaster",
+    "notePacking":  "p2-notePacking"
+  };
+
+  for (const [field, target] of Object.entries(mapping)) {
+    const src = document.getElementById(prefix + field);
+    const tgt = document.getElementById(target);
+    if (src && tgt) tgt.innerText = src.value || "—";
+  }
+
+  // Date
+  const d2 = document.getElementById("p2-date");
+  if (d2) d2.innerText = new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+}
+
+function bindFormSync() {
+  const map = {
+    "c-orderNo":      "d-orderNo",
+    "c-party":        "d-party",
+    "c-brand":        "d-brand",
+    "c-fabric":       "d-fabric",
+    "c-bedSize":      "d-bedSize",
+    "c-ply":          "d-ply",
+    "c-weight":       "d-weight",
+    "c-category":     "d-category",
+    "c-colors":       "d-colors",
+    "c-totalDesigns": "d-totalDesigns",
+    "c-designer":     "d-designer"
+  };
+  for (const [src, tgt] of Object.entries(map)) {
+    const el = document.getElementById(src);
+    if (!el) continue;
+    const ev = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(ev, () => {
+      const v = el.value || "—";
+      document.getElementById(tgt).innerText =
+        src === "c-weight" && el.value ? el.value + " GM" : v;
+    });
+  }
+
+  // Page 2 sync — new production fields
+  const p2map = {
+    "c-orderNo":      "p2-orderNo",
+    "c-party":        "p2-party",
+    "c-sattan":       "p2-sattan",
+    "c-emboss":       "p2-emboss",
+    "c-labels":       "p2-labels",
+    "c-rollQty":      "p2-rollQty",
+    "c-packingBore":  "p2-packingBore",
+    "c-printingUnit": "p2-printingUnit",
+    "c-boraPacking":  "p2-boraPacking",
+    "c-boxPacking":   "p2-boxPacking",
+    "c-bedSize":      "p2-bedSize",
+    "c-noteMaster":   "p2-noteMaster",
+    "c-notePacking":  "p2-notePacking"
+  };
+  for (const [src, tgt] of Object.entries(p2map)) {
+    const el = document.getElementById(src);
+    if (!el) continue;
+    // Use "input" for everything — it fires on both typing and paste;
+    // add "change" only for SELECT which doesn't fire "input"
+    const events = el.tagName === "SELECT" ? ["change"] : ["input"];
+    events.forEach(ev => el.addEventListener(ev, () => {
+      const t = document.getElementById(tgt);
+      if (t) t.innerText = el.value || "—";
+    }));
+  }
+
+  // EDIT-form → preview live sync
+  const editMap = {
+    "e-orderNo":      "d-orderNo",
+    "e-party":        "d-party",
+    "e-brand":        "d-brand",
+    "e-fabric":       "d-fabric",
+    "e-bedSize":      "d-bedSize",
+    "e-ply":          "d-ply",
+    "e-weight":       "d-weight",
+    "e-category":     "d-category",
+    "e-colors":       "d-colors",
+    "e-totalDesigns": "d-totalDesigns",
+    "e-designer":     "d-designer"
+  };
+  for (const [src, tgt] of Object.entries(editMap)) {
+    const el = document.getElementById(src);
+    if (!el) continue;
+    const ev = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(ev, () => {
+      const v = el.value || "—";
+      document.getElementById(tgt).innerText =
+        src === "e-weight" && el.value ? el.value + " GM" : v;
+    });
+  }
+
+  // Edit-form page 2 sync
+  const ep2 = {
+    "e-orderNo":      "p2-orderNo",
+    "e-party":        "p2-party",
+    "e-sattan":       "p2-sattan",
+    "e-emboss":       "p2-emboss",
+    "e-labels":       "p2-labels",
+    "e-rollQty":      "p2-rollQty",
+    "e-packingBore":  "p2-packingBore",
+    "e-printingUnit": "p2-printingUnit",
+    "e-boraPacking":  "p2-boraPacking",
+    "e-boxPacking":   "p2-boxPacking",
+    "e-bedSize":      "p2-bedSize",
+    "e-noteMaster":   "p2-noteMaster",
+    "e-notePacking":  "p2-notePacking"
+  };
+  for (const [src, tgt] of Object.entries(ep2)) {
+    const el = document.getElementById(src);
+    if (!el) continue;
+    const events = el.tagName === "SELECT" ? ["change"] : ["input"];
+    events.forEach(ev => el.addEventListener(ev, () => {
+      const t = document.getElementById(tgt);
+      if (t) t.innerText = el.value || "—";
+    }));
+  }
+
+  // Image upload handlers
+  document.getElementById("c-images").addEventListener("change", handleImages);
+  document.getElementById("e-images").addEventListener("change", handleEditImages);
+
+  // ═══ REAL-TIME P2 SYNC ═══
+  // Any input/change in either sidebar → push ALL values to production page
+  // This catches: typing, paste, select change, textarea — everything
+  ["sb-create", "sb-search"].forEach(sbId => {
+    const sb = document.getElementById(sbId);
+    if (!sb) return;
+    sb.addEventListener("input",  _syncP2FromActiveForm);
+    sb.addEventListener("change", _syncP2FromActiveForm);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🎨  MULTI-PAGE INTERACTIVE IMAGE SYSTEM
+//     Create tab: allPages[] — array of pages, each page = [] of base64 urls
+//     Edit tab:   editImgDataURLs[] — single flat array (one page)
+// ═══════════════════════════════════════════════════════════
+
+let _gridMode   = "create";
+let _dragSrcIdx = null;
+let _dragPageIdx = null; // which page the drag started from
+
+// ── imgDataURLs kept as flat alias of current page for compat ──
+Object.defineProperty(window, "imgDataURLs", {
+  get() { return allPages[currPageIdx] || []; },
+  set(v) { if (allPages[currPageIdx] !== undefined) allPages[currPageIdx] = v; }
+});
+
+// ── FILE INPUT HANDLER (Create tab) ──────────────────────────
+function handleImages(e) {
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
+  if (!files.length) return;
+  _readFilesToArray(files, arr => {
+    // Auto-paginate: split images into chunks of IMGS_PER_PAGE (8)
+    // Replace ONLY the current page and insert new pages after it if overflow
+    if (arr.length <= IMGS_PER_PAGE) {
+      allPages[currPageIdx] = arr;
+    } else {
+      // Split into chunks of 8
+      const chunks = [];
+      for (let i = 0; i < arr.length; i += IMGS_PER_PAGE) {
+        chunks.push(arr.slice(i, i + IMGS_PER_PAGE));
+      }
+      // Replace current page with first chunk, insert rest after
+      allPages.splice(currPageIdx, 1, ...chunks);
+    }
+    _pptActivePage = currPageIdx;
+    _gridMode = "create";
+    _renderPPT();
+    _renderPageTabs();
+    _syncTotalDesigns();
+    if (arr.length > IMGS_PER_PAGE) {
+      toast(`✅ ${arr.length} designs → ${Math.ceil(arr.length / IMGS_PER_PAGE)} pages mein split kiya`, "success");
+    }
+  });
+}
+
+// ── FILE INPUT HANDLER (Edit tab) ────────────────────────────
+function handleEditImages(e) {
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith("image/"));
+  if (!files.length) {
+    editImgDataURLs = [];
+    document.getElementById("e-img-count").style.display = "none";
+    return;
+  }
+  _readFilesToArray(files, arr => {
+    editImgDataURLs = arr;
+    _gridMode = "edit";
+    _showPdfViewer = false;  // Switch from PDF viewer to design grid
+    // Auto-paginate: split into chunks of 8
+    if (arr.length <= IMGS_PER_PAGE) {
+      allPages = [arr];
+    } else {
+      allPages = [];
+      for (let i = 0; i < arr.length; i += IMGS_PER_PAGE) {
+        allPages.push(arr.slice(i, i + IMGS_PER_PAGE));
+      }
+    }
+    currPageIdx = 0;
+    _pptActivePage = 0;
+    _renderPPT();
+    _renderPageTabs();
+    _syncCount("edit");
+    const c = document.getElementById("e-img-count");
+    c.style.display = "block";
+    document.getElementById("e-img-count-num").innerText = arr.length;
+    if (arr.length > IMGS_PER_PAGE) {
+      toast(`✅ ${arr.length} designs → ${allPages.length} pages`, "success");
+    }
+  });
+}
+
+// ── READ FILES → BASE64 ARRAY ─────────────────────────────────
+function _readFilesToArray(files, callback) {
+  const result = new Array(files.length);
+  let done = 0;
+  files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      result[i] = ev.target.result;
+      if (++done === files.length) callback(result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ── PAGE MANAGEMENT ───────────────────────────────────────────
+let _pptActivePage = 0; // currently displayed page in PPT stage
+
+function insertPage() {
+  allPages.push([]);
+  currPageIdx    = allPages.length - 1;
+  _pptActivePage = currPageIdx;
+  _renderPPT();
+  _renderPageTabs();
+  _syncTotalDesigns();
+  toast(`✅ Page ${currPageIdx + 1} inserted`, "success");
+}
+
+function deleteCurrPage() {
+  if (allPages.length === 1) {
+    allPages[0]    = [];
+    currPageIdx    = 0;
+    _pptActivePage = 0;
+    _renderPPT();
+    _renderPageTabs();
+    _syncTotalDesigns();
+    toast("🗑️ Page cleared", "info");
+    return;
+  }
+  allPages.splice(currPageIdx, 1);
+  currPageIdx    = Math.min(currPageIdx, allPages.length - 1);
+  _pptActivePage = currPageIdx;
+  _renderPPT();
+  _renderPageTabs();
+  _syncTotalDesigns();
+  toast(`🗑️ Page deleted`, "info");
+}
+
+function switchPage(idx) {
+  currPageIdx    = idx;
+  _pptActivePage = idx;
+  _renderPPT();
+  _renderPageTabs();
+}
+
+// ── RENDER PAGE TABS (sidebar form) ──────────────────────────
+function _renderPageTabs() {
+  const tabs = document.getElementById("page-tabs");
+  if (!tabs) return;
+  tabs.innerHTML = "";
+
+  // PDF tab (shown first when editing order with saved PDF)
+  if (_showPdfViewer && editPdfLink) {
+    const pdfBtn = document.createElement("button");
+    pdfBtn.textContent = "📄 Saved PDF";
+    pdfBtn.onclick = () => { _pptActivePage = -1; _renderPPT(); _renderPageTabs(); };
+    pdfBtn.style.cssText = `padding:4px 10px;border:none;border-radius:6px;font-weight:600;font-size:.78rem;cursor:pointer;transition:.15s;
+      background:${_pptActivePage === -1 ? "#1e40af" : "#dbeafe"};
+      color:${_pptActivePage === -1 ? "white" : "#1e40af"};`;
+    tabs.appendChild(pdfBtn);
+  }
+
+  // Design pages
+  allPages.forEach((_, i) => {
+    const btn = document.createElement("button");
+    btn.textContent = `Page ${i + 1}`;
+    btn.onclick = () => switchPage(i);
+    btn.style.cssText = `padding:4px 10px;border:none;border-radius:6px;font-weight:600;font-size:.78rem;cursor:pointer;transition:.15s;
+      background:${i === currPageIdx ? "#4f46e5" : "#e0e7ff"};
+      color:${i === currPageIdx ? "white" : "#3730a3"};`;
+    tabs.appendChild(btn);
+  });
+  // Production page button
+  const p2btn = document.createElement("button");
+  p2btn.textContent = "📦 Prod.";
+  p2btn.onclick = () => { _pptActivePage = allPages.length; _renderPPT(); _renderPageTabs(); };
+  p2btn.style.cssText = `padding:4px 10px;border:none;border-radius:6px;font-weight:600;font-size:.78rem;cursor:pointer;transition:.15s;
+    background:${_pptActivePage === allPages.length ? "#059669" : "#d1fae5"};
+    color:${_pptActivePage === allPages.length ? "white" : "#065f46"};`;
+  tabs.appendChild(p2btn);
+
+  const badge = document.getElementById("page-count-badge");
+  if (badge) badge.textContent = `Page ${currPageIdx + 1} / ${allPages.length}`;
+  const delBtn = document.getElementById("btn-del-page");
+  if (delBtn) delBtn.style.display = allPages.length > 1 || allPages[0].length > 0 ? "block" : "none";
+}
+
+// ════════════════════════════════════════════════════════════
+// 🎞️  PPT VIEWER — Main rendering engine
+//     Strip = thumbnails of ALL pages (design + production)
+//     Stage = full-size view of _pptActivePage
+// ════════════════════════════════════════════════════════════
+function _renderPPT() {
+  _renderPPTStrip();
+  _renderPPTStage();
+}
+
+function _renderPPTStrip() {
+  const strip = document.getElementById("ppt-strip");
+  if (!strip) return;
+  strip.innerHTML = "";
+
+  // ── PDF Thumbnail (shown first when editing an order with saved PDF) ──
+  if (_showPdfViewer && editPdfLink) {
+    const pdfThumb = _makeThumbnail(-1, _pptActivePage === -1,
+      () => { _pptActivePage = -1; _renderPPTStage(); _highlightThumb(-1); _renderPageTabs(); }
+    );
+    const pdfInner = pdfThumb.querySelector(".ppt-thumb-inner");
+    pdfInner.innerHTML = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(135deg,#1e40af,#3b82f6);flex-direction:column;gap:4px;">
+      <i class="ph ph-file-pdf" style="font-size:1.6rem;color:white;"></i>
+      <span style="font-size:.55rem;color:#bfdbfe;font-weight:700;">SAVED PDF</span>
+    </div>`;
+    pdfThumb.querySelector(".ppt-thumb-label").textContent = "📄 PDF";
+    strip.appendChild(pdfThumb);
+  }
+
+  // Design pages
+  allPages.forEach((pageImgs, pgIdx) => {
+    const thumb = _makeThumbnail(pgIdx, pgIdx === _pptActivePage,
+      () => { _pptActivePage = pgIdx; currPageIdx = pgIdx; _renderPPTStage(); _highlightThumb(pgIdx); _renderPageTabs(); }
+    );
+    // Build mini A4 inside thumbnail
+    const inner = thumb.querySelector(".ppt-thumb-inner");
+    const scaleWrap = document.createElement("div");
+    scaleWrap.className = "a4-scale-wrap";
+    const miniA4 = _buildA4PageElement(pageImgs, pgIdx, allPages.length);
+    miniA4.querySelectorAll(".card-del,.card-drag").forEach(el => el.remove());
+    // Strip ALL IDs from thumbnail clone — prevents getElementById collision
+    miniA4.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+    miniA4.removeAttribute("id");
+    miniA4.style.boxShadow = "none";
+    scaleWrap.appendChild(miniA4);
+    inner.appendChild(scaleWrap);
+    // Scale to fit
+    _applyThumbScale(inner, scaleWrap);
+    thumb.querySelector(".ppt-thumb-label").textContent = `Slide ${pgIdx + 1}`;
+    strip.appendChild(thumb);
+  });
+
+  // Production/Packing page thumbnail
+  const prodIdx = allPages.length;
+  const prodThumb = _makeThumbnail(prodIdx, prodIdx === _pptActivePage,
+    () => { _pptActivePage = prodIdx; _renderPPTStage(); _highlightThumb(prodIdx); _renderPageTabs(); }
+  );
+  const prodInner = prodThumb.querySelector(".ppt-thumb-inner");
+  const prodScale = document.createElement("div");
+  prodScale.className = "a4-scale-wrap";
+  // printArea2 may be in stage or storage — querySelector finds it either way
+  const p2src = document.getElementById("printArea2");
+  if (p2src) {
+    const p2clone = p2src.cloneNode(true);
+    p2clone.querySelectorAll(".no-print,.card-del,.card-drag").forEach(el => el.remove());
+    p2clone.removeAttribute("id");
+    // ⚠️ CRITICAL: Strip ALL IDs from clone — otherwise getElementById
+    // finds the thumbnail's p2-sattan INSTEAD of the live original!
+    p2clone.querySelectorAll("[id]").forEach(el => el.removeAttribute("id"));
+    p2clone.style.boxShadow = "none";
+    p2clone.style.display   = "";
+    p2clone.querySelectorAll("[disabled]").forEach(el => el.removeAttribute("disabled"));
+    // Bake input values into clone for thumbnail display
+    _bakeInputValues(p2src, p2clone);
+    prodScale.appendChild(p2clone);
+  } else {
+    // Fallback: show a placeholder
+    prodScale.innerHTML = `<div style="padding:8mm;text-align:center;color:#94a3b8;font-size:8pt;">📦 Production Page</div>`;
+  }
+  prodInner.appendChild(prodScale);
+  _applyThumbScale(prodInner, prodScale);
+  prodThumb.querySelector(".ppt-thumb-label").textContent = "📦 Prod.";
+  strip.appendChild(prodThumb);
+}
+
+function _makeThumbnail(idx, isActive, onClickFn) {
+  const thumb = document.createElement("div");
+  thumb.className = "ppt-thumb" + (isActive ? " active" : "");
+  thumb.dataset.idx = idx;
+  thumb.onclick = onClickFn;
+  thumb.innerHTML = `
+    <div class="ppt-thumb-inner"></div>
+    <div class="ppt-thumb-label">Slide ${idx + 1}</div>
+  `;
+  return thumb;
+}
+
+function _applyThumbScale(container, scaleWrap) {
+  // Container width in px (approx 130px usable)
+  requestAnimationFrame(() => {
+    const cw = container.offsetWidth || 128;
+    const ch = container.offsetHeight || (cw * 210 / 297);
+    // A4 in mm: 297×210 → convert to px at 96dpi: 297*3.7795 ≈ 1123 × 210*3.7795 ≈ 794
+    const a4wPx = 1123;
+    const scale = cw / a4wPx;
+    scaleWrap.style.transform = `scale(${scale})`;
+    scaleWrap.style.transformOrigin = "top left";
+  });
+}
+
+function _highlightThumb(idx) {
+  document.querySelectorAll(".ppt-thumb").forEach(t => {
+    t.classList.toggle("active", parseInt(t.dataset.idx) === idx);
+  });
+}
+
+function _renderPPTStage() {
+  const stage   = document.getElementById("ppt-stage");
+  const storage = document.getElementById("p2-storage");
+  if (!stage) return;
+
+  stage.innerHTML = "";
+
+  // ── PDF VIEWER MODE — show saved PDF in iframe ──
+  if (_showPdfViewer && editPdfLink && _pptActivePage === -1) {
+    if (storage) storage.style.display = "none";
+    // Convert Drive file URL to preview URL
+    let previewUrl = editPdfLink;
+    const fileIdMatch = editPdfLink.match(/\/d\/([^\/]+)/);
+    if (fileIdMatch) {
+      previewUrl = `https://drive.google.com/file/d/${fileIdMatch[1]}/preview`;
+    }
+    stage.innerHTML = `
+      <div class="pdf-viewer-wrap">
+        <div class="pdf-viewer-toolbar">
+          <span style="color:#a5b4fc;font-weight:700;font-size:.85rem;">
+            <i class="ph ph-file-pdf"></i> Saved PDF — ${editingNo || ""}
+          </span>
+          <a href="${editPdfLink}" target="_blank" rel="noopener" class="pvt-btn pvt-btn-green">
+            <i class="ph ph-arrow-square-out"></i> Open in Drive
+          </a>
+          <button class="pvt-btn pvt-btn-orange" onclick="_switchToRegenMode()">
+            <i class="ph ph-arrows-clockwise"></i> Regenerate PDF
+          </button>
+        </div>
+        <iframe src="${previewUrl}" class="pdf-iframe" allowfullscreen></iframe>
+      </div>`;
+    return;
+  }
+
+  if (_pptActivePage < allPages.length) {
+    // ── Show a design page ──
+    if (storage) storage.style.display = "none";
+
+    const a4 = _buildA4PageElement(allPages[_pptActivePage], _pptActivePage, allPages.length);
+    a4.style.cursor = "default";
+    stage.appendChild(a4);
+    _syncInfoPanelInElement(a4);
+    setDate();
+
+  } else {
+    // ── Show production/packing page ──
+    // SYNC form values → p2-* elements BEFORE showing
+    _syncP2FromActiveForm();
+    if (storage) {
+      storage.style.display = "flex";
+    }
+    stage.innerHTML = `<div style="color:#3a3a5c;font-size:.8rem;font-weight:600;
+      display:flex;align-items:center;justify-content:center;width:100%;height:100%;">
+      📦 Production &amp; Packing Page
+    </div>`;
+  }
+}
+
+// Switch from PDF viewer to regenerate mode (upload new images)
+function _switchToRegenMode() {
+  _showPdfViewer = false;
+  _pptActivePage = 0;
+  _renderPPT();
+  _renderPageTabs();
+  toast("📤 Upload new designs → PDF regenerate hoga on save", "info");
+}
+
+// Build a standalone A4 page element (used by stage, strip, and print wrapper)
+function _buildA4PageElement(pageImgs, pgIdx, totalPages) {
+  const a4 = document.createElement("div");
+  a4.className = "a4";
+  a4.id = pgIdx === 0 ? "printArea" : `printArea_p${pgIdx + 1}`;
+  a4.dataset.pageIdx = pgIdx;
+
+  const totalPg = totalPages || allPages.length;
+  a4.innerHTML = `
+    <div class="a4-header">
+      <div class="a4-header-cross">⊕</div>
+      <div class="a4-title">SARV INDIA HOME FURNISHING</div>
+      <div class="a4-subtitle">DESIGN DATA${totalPg > 1 ? ` — SLIDE ${pgIdx + 1} OF ${totalPg}` : ""}</div>
+    </div>
+    <div class="a4-body">
+      <div class="a4-grid-wrap">
+        <div class="a4-designs" data-pg="${pgIdx}"></div>
+      </div>
+      ${_infoPanel()}
+    </div>`;
+
+  const grid = a4.querySelector(`.a4-designs[data-pg="${pgIdx}"]`);
+  if (pageImgs && pageImgs.length > 0) {
+    _fillGrid(grid, pageImgs, pgIdx);
+  } else {
+    _fillBlankGrid(grid);
+  }
+
+  return a4;
+}
+
+// ── RENDER ALL DESIGN PAGES (for hidden print container) ──────
+function _renderAllDesignPages() {
+  // Keep hidden container in sync for _buildPrintWrapper
+  const container = document.getElementById("design-pages-container");
+  if (!container) return;
+  container.innerHTML = "";
+  allPages.forEach((pageImgs, pgIdx) => {
+    const a4 = _buildA4PageElement(pageImgs, pgIdx, allPages.length);
+    a4.querySelectorAll(".card-del,.card-drag").forEach(el => el.remove());
+    container.appendChild(a4);
+  });
+}
+
+// ── INFO PANEL HTML ───────────────────────────────────────────
+function _infoPanel(compact) {
+  return `<div class="a4-info">
+    <div class="info-row"><div class="info-label">Order No.</div><div class="info-value accent" id="d-orderNo">—</div></div>
+    <div class="info-row"><div class="info-label">Party Name</div><div class="info-value blue" id="d-party">—</div></div>
+    <div class="info-row"><div class="info-label">Brand Name</div><div class="info-value" id="d-brand">—</div></div>
+    <div class="info-row"><div class="info-label">Date</div><div class="info-value" id="d-date">—</div></div>
+    <div class="info-row"><div class="info-label">Fabric Name</div><div class="info-value" id="d-fabric">—</div></div>
+    <div class="info-row"><div class="info-label">Fabric Category</div><div class="info-value" id="d-category">—</div></div>
+    <div class="info-row"><div class="info-label">Bed Size</div><div class="info-value" id="d-bedSize">—</div></div>
+    <div class="info-row"><div class="info-label">Blanket Ply</div><div class="info-value" id="d-ply">—</div></div>
+    <div class="info-row"><div class="info-label">Actual Pcs Weight</div><div class="info-value" id="d-weight">—</div></div>
+    <div class="info-row"><div class="info-label">Total Designs</div><div class="info-value red-num" id="d-totalDesigns">—</div></div>
+    <div class="info-row"><div class="info-label">Total Colors</div><div class="info-value" id="d-colors">—</div></div>
+    <div class="info-row"><div class="info-label">Designer Name</div><div class="info-value" id="d-designer">—</div></div>
+  </div>`;
+}
+
+// ── FILL GRID WITH IMAGES ─────────────────────────────────────
+function _fillGrid(grid, urls, pgIdx) {
+  grid.innerHTML = "";
+  const n = urls.length;
+  // Max 4 cols — more than 4 makes images unreadably small on A4 landscape
+  const cols = n <= 2 ? 2 : 4;
+  grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+
+  // Dynamic image height — fit within A4 page body
+  // A4 landscape body: 210mm - 12mm padding - 22mm header = 176mm usable
+  // Label bar: ~7mm per row, gap: ~1.5mm
+  const rows     = Math.ceil(n / cols);
+  const bodyMM   = 176;                         // usable body height in mm
+  const labelMM  = 7;                            // label bar per row
+  const gapMM    = 1.5;                          // gap between rows
+  const perRowMM = (bodyMM - (rows - 1) * gapMM) / rows - labelMM;
+  // Clamp between 35mm (min readable) and 80mm (max useful)
+  const imgH     = Math.max(35, Math.min(80, Math.floor(perRowMM)));
+
+  urls.forEach((url, i) => {
+    const card = _makeCard(url, i, pgIdx, imgH);
+    grid.appendChild(card);
+  });
+}
+
+// ── FILL BLANK PLACEHOLDER GRID ───────────────────────────────
+function _fillBlankGrid(grid) {
+  grid.style.gridTemplateColumns = "repeat(4,1fr)";
+  grid.innerHTML = "";
+  for (let i = 1; i <= 8; i++) {
+    grid.innerHTML += `
+      <div class="design-card blank-card" style="cursor:default;">
+        <div style="height:72mm;display:flex;align-items:center;justify-content:center;">
+          <i class="ph ph-image" style="font-size:2rem;color:#d1d5db;"></i>
+        </div>
+        <div class="design-card-bar" style="opacity:.4;">
+          <span class="design-card-lbl">DESIGN</span>
+          <span class="design-card-num">#${String(i).padStart(2,"0")}</span>
+        </div>
+      </div>`;
+  }
+}
+
+// ── BUILD ONE CARD ────────────────────────────────────────────
+function _makeCard(url, idx, pgIdx, imgH) {
+  const h = imgH || 42;
+  const card = document.createElement("div");
+  card.className   = "design-card";
+  card.draggable   = true;
+  card.dataset.idx = idx;
+  card.dataset.pg  = pgIdx;
+
+  card.innerHTML = `
+    <div class="card-drag" title="Drag to reorder">⠿</div>
+    <button class="card-del" title="Remove this design" onclick="_deleteCard(${idx},${pgIdx})">✕</button>
+    <img src="${url}" alt="Design ${idx+1}" style="height:${h}mm;">
+    <div class="design-card-bar">
+      <span class="design-card-lbl" contenteditable="true" spellcheck="false" title="Click to edit label">DESIGN</span>
+      <span class="design-card-num">#${String(idx+1).padStart(2,"0")}</span>
+    </div>
+  `;
+
+  const lbl = card.querySelector(".design-card-lbl");
+  lbl.addEventListener("mousedown", e => e.stopPropagation());
+  lbl.addEventListener("dragstart", e => { e.stopPropagation(); e.preventDefault(); });
+  lbl.addEventListener("input", () => {
+    const sel = window.getSelection();
+    const off = sel.focusOffset;
+    lbl.textContent = (lbl.textContent || "").toUpperCase();
+    try {
+      const r = document.createRange();
+      r.setStart(lbl.firstChild || lbl, Math.min(off, lbl.textContent.length));
+      r.collapse(true); sel.removeAllRanges(); sel.addRange(r);
+    } catch(_) {}
+  });
+
+  card.addEventListener("dragstart", e => {
+    _dragSrcIdx  = idx;
+    _dragPageIdx = pgIdx;
+    card.classList.add("dragging");
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", idx);
+  });
+  card.addEventListener("dragend", () => {
+    card.classList.remove("dragging");
+    document.querySelectorAll(".design-card.drag-over").forEach(c => c.classList.remove("drag-over"));
+  });
+  card.addEventListener("dragover", e => { e.preventDefault(); card.classList.add("drag-over"); });
+  card.addEventListener("dragleave", () => card.classList.remove("drag-over"));
+  card.addEventListener("drop", e => {
+    e.preventDefault(); e.stopPropagation();
+    card.classList.remove("drag-over");
+    const tgtIdx = parseInt(card.dataset.idx);
+    const tgtPg  = parseInt(card.dataset.pg);
+    if (_dragSrcIdx === null) return;
+    if (_dragPageIdx === tgtPg && _dragSrcIdx === tgtIdx) return;
+    // Reorder within same page
+    if (_dragPageIdx === tgtPg) {
+      const arr = allPages[tgtPg];
+      const moved = arr.splice(_dragSrcIdx, 1)[0];
+      arr.splice(tgtIdx, 0, moved);
+    } else {
+      // Move across pages
+      const moved = allPages[_dragPageIdx].splice(_dragSrcIdx, 1)[0];
+      allPages[tgtPg].splice(tgtIdx, 0, moved);
+    }
+    _dragSrcIdx = null; _dragPageIdx = null;
+    _renderPPT();
+    _renderPageTabs();
+    _syncTotalDesigns();
+  });
+
+  return card;
+}
+
+// ── DELETE CARD ───────────────────────────────────────────────
+function _deleteCard(idx, pgIdx) {
+  allPages[pgIdx].splice(idx, 1);
+  _renderPPT();
+  _renderPageTabs();
+  _syncTotalDesigns();
+}
+
+// ── SYNC COUNTERS ─────────────────────────────────────────────
+function _syncTotalDesigns() {
+  const total = allPages.reduce((s, pg) => s + pg.length, 0);
+  const el = document.getElementById("c-totalDesigns");
+  if (el) el.value = total;
+  // Update all d-totalDesigns in preview (multiple pages)
+  document.querySelectorAll("#d-totalDesigns").forEach(el => { el.innerText = total || "—"; });
+  // Sync info panels after re-render
+  _resyncAllInfoPanels();
+}
+
+function _syncCount(mode) {
+  if (mode === "edit") {
+    const n = editImgDataURLs.length;
+    const el = document.getElementById("e-totalDesigns");
+    if (el) el.value = n;
+    document.querySelectorAll("#d-totalDesigns").forEach(el => { el.innerText = n || "—"; });
+    const c = document.getElementById("e-img-count");
+    if (c) {
+      if (n > 0) { c.style.display = "block"; document.getElementById("e-img-count-num").innerText = n; }
+      else c.style.display = "none";
+    }
+  }
+}
+
+// Re-sync all info-panel IDs in the currently displayed stage
+function _resyncAllInfoPanels() {
+  const stage = document.getElementById("ppt-stage");
+  if (stage) _syncInfoPanelInElement(stage);
+}
+
+// Sync info panel [id="d-*"] values into any element (PPT stage clone or print clone)
+// In create mode: reads live c-* form fields
+// In edit mode:   reads window._editOrderData set by syncPreviewFromOrder()
+function _syncInfoPanelInElement(el) {
+  const isEdit = _gridMode === "edit" && window._editOrderData;
+  const ed = window._editOrderData || {};
+  const dateStr = new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+
+  const vals = isEdit ? {
+    "d-orderNo":      ed.orderNo  || "—",
+    "d-party":        ed.party    || "—",
+    "d-brand":        ed.brand    || "—",
+    "d-fabric":       ed.fabric   || "—",
+    "d-bedSize":      ed.bedSize  || "—",
+    "d-ply":          ed.ply      || "—",
+    "d-weight":       ed.weight   || "—",
+    "d-category":     ed.category || "—",
+    "d-colors":       ed.colors   || "—",
+    "d-totalDesigns": ed.total    || "—",
+    "d-designer":     ed.designer || "—",
+    "d-date":         ed.date     || dateStr
+  } : {
+    "d-orderNo":      document.getElementById("c-orderNo")?.value      || "—",
+    "d-party":        document.getElementById("c-party")?.value        || "—",
+    "d-brand":        document.getElementById("c-brand")?.value        || "—",
+    "d-fabric":       document.getElementById("c-fabric")?.value       || "—",
+    "d-bedSize":      document.getElementById("c-bedSize")?.value      || "—",
+    "d-ply":          document.getElementById("c-ply")?.value          || "—",
+    "d-weight":       (() => { const v = document.getElementById("c-weight")?.value; return v ? v+" GM" : "—"; })(),
+    "d-category":     document.getElementById("c-category")?.value     || "—",
+    "d-colors":       document.getElementById("c-colors")?.value       || "—",
+    "d-totalDesigns": document.getElementById("c-totalDesigns")?.value || "—",
+    "d-designer":     document.getElementById("c-designer")?.value     || "—",
+    "d-date":         dateStr
+  };
+
+  for (const [id, val] of Object.entries(vals)) {
+    // Use querySelectorAll with data-orig-id (for print clones where IDs were removed)
+    // and normal [id] selector for live stage elements
+    el.querySelectorAll(`[id="${id}"], [data-orig-id="${id}"]`)
+      .forEach(node => { node.innerText = val; });
+  }
+}
+
+function renderInteractiveGrid(urls, mode) {
+  if (mode === "edit") {
+    editImgDataURLs = urls;
+    allPages = [urls];
+    currPageIdx = 0;
+    _pptActivePage = 0;
+    _gridMode = "edit";
+  } else {
+    allPages[currPageIdx] = urls;
+  }
+  _renderPPT();
+  if (mode === "edit") _syncCount("edit");
+  else _syncTotalDesigns();
+}
+function renderGrid(urls) { renderInteractiveGrid(urls, _gridMode); }
+function updateGridCols(n) {}
+function loadBlankGrid(n) {
+  allPages = [[]]; currPageIdx = 0; _pptActivePage = 0;
+  _renderPPT();
+  _renderPageTabs();
+}
+
+// ── CLEAR (Create tab current page) ──────────────────────────
+function clearImages() {
+  document.getElementById("c-images").value = "";
+  document.getElementById("c-totalDesigns").value = "";
+  allPages[currPageIdx] = [];
+  _gridMode = "create";
+  _renderPPT();
+  _renderPageTabs();
+  _syncTotalDesigns();
+}
+
+// ─────────────────────────────────────────
+// SAVE ORDER (Tab 1)
+// ─────────────────────────────────────────
+async function saveOrder() {
+  if (!GAS_URL) { toast("❌ GAS URL not configured in HTML!", "error"); return; }
+
+  const party = document.getElementById("c-party").value.trim();
+  if (!party) { toast("⚠️ Party Name is required!", "error"); return; }
+
+  const btn = document.getElementById("btn-save");
+  btn.disabled = true;
+
+  const orderNo  = document.getElementById("c-orderNo").value.trim() || ("ORD-" + Date.now());
+  const fileName = `SIHF_${orderNo}_${party.replace(/\s+/g, "_")}.pdf`;
+
+  // ── Generate PDF (only if images uploaded) ──
+  let pdfBase64 = "";
+  const totalImgs = allPages.reduce((s, pg) => s + pg.length, 0);
+  if (totalImgs > 0) {
+    btn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Generating PDF...';
+    try {
+      pdfBase64 = await generatePdfBase64();
+    } catch (pdfErr) {
+      console.error("PDF generation failed:", pdfErr);
+      toast("⚠️ PDF generation failed — saving order without PDF", "info");
+      pdfBase64 = "";
+    }
+  }
+
+  // ── STEP 1: Save all text data first (small payload — always succeeds) ──
+  btn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Saving to Sheet...';
+
+  const textPayload = {
+    action: "save",
+    orderData: {
+      orderNo,
+      partyName:      party,
+      brandName:      document.getElementById("c-brand").value,
+      fabricName:     document.getElementById("c-fabric").value,
+      category:       document.getElementById("c-category").value,
+      bedSize:        document.getElementById("c-bedSize").value,
+      blanketPly:     document.getElementById("c-ply").value,
+      weight:         document.getElementById("c-weight").value,
+      totalDesigns:   document.getElementById("c-totalDesigns").value,
+      colors:         document.getElementById("c-colors").value,
+      designerName:   document.getElementById("c-designer").value,
+      status:         document.getElementById("c-status").value,
+      printStatus:    document.getElementById("c-printStatus").value,
+      sattan:         document.getElementById("c-sattan").value,
+      emboss:         document.getElementById("c-emboss").value,
+      labels:         document.getElementById("c-labels").value,
+      rollQty:        document.getElementById("c-rollQty").value,
+      packingBore:    document.getElementById("c-packingBore").value,
+      printingUnit:   document.getElementById("c-printingUnit").value,
+      noteMaster:     document.getElementById("c-noteMaster").value,
+      notePacking:    document.getElementById("c-notePacking").value,
+      boraPacking:    document.getElementById("c-boraPacking").value,
+      boxPacking:     document.getElementById("c-boxPacking").value,
+      // No pdfBase64, no imagesJson — text only, always under 50KB
+      pdfBase64:      "",
+      pdfFileName:    "",
+      imagesJson:     ""
+    }
+  };
+
+  try {
+    const r1 = await postGAS(textPayload);
+    if (!r1.success) {
+      toast("❌ " + r1.error, "error");
+      return;
+    }
+    toast("✅ Order saved! " + (pdfBase64 ? "Uploading PDF..." : ""), "success");
+
+    // ── STEP 2: Upload PDF separately (only if images were uploaded) ──
+    if (pdfBase64) {
+      btn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Uploading PDF to Drive...';
+      try {
+        const pdfPayload = {
+          action:      "uploadPdf",
+          orderNo:     orderNo,
+          pdfBase64:   pdfBase64,
+          pdfFileName: fileName
+        };
+        const r2 = await postGAS(pdfPayload);
+        if (r2.success && r2.pdfLink) {
+          toast("✅ PDF uploaded to Drive 📄", "success");
+        } else {
+          toast("⚠️ Data saved but PDF upload failed — retry karo", "info");
+        }
+      } catch(pdfErr) {
+        toast("⚠️ Data saved but PDF upload failed: " + pdfErr.message, "info");
+      }
+    }
+
+    setTimeout(resetForm, 1800);
+
+  } catch(err) {
+    toast("❌ " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph ph-floppy-disk"></i> Save to Sheets';
+  }
+}
+
+// ─────────────────────────────────────────
+// SEARCH ORDER (Tab 2)
+// ─────────────────────────────────────────
+async function doSearch() {
+  if (!GAS_URL) { toast("❌ GAS URL not configured in HTML!", "error"); return; }
+
+  const q = document.getElementById("s-query").value.trim().toUpperCase();
+  if (!q) { toast("⚠️ Order No. enter karo", "error"); return; }
+
+  // Show loading state
+  const searchBtn = document.querySelector(".btn-search");
+  if (searchBtn) { searchBtn.disabled = true; searchBtn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Searching...'; }
+
+  try {
+    const r = await getGAS("search", { orderNo: q });
+
+    if (r.success) {
+      populateEditForm(r.data);
+      document.getElementById("edit-form").style.display = "block";
+
+      // Sync production page preview after form is filled
+      _syncP2FromActiveForm();
+
+      // Auto-scroll sidebar to show the filled edit form
+      const editForm = document.getElementById("edit-form");
+      if (editForm) editForm.scrollIntoView({ behavior: "smooth", block: "start" });
+
+      toast("✅ Order found — all fields loaded!", "success");
+    } else {
+      document.getElementById("edit-form").style.display = "none";
+      toast("❌ " + r.error, "error");
+    }
+  } catch(err) {
+    toast("❌ " + err.message, "error");
+  } finally {
+    if (searchBtn) { searchBtn.disabled = false; searchBtn.innerHTML = '<i class="ph ph-check"></i> Search'; }
+  }
+}
+
+function populateEditForm(d) {
+  editingNo = d.Order_No;
+
+  // ── Reset edit image state ──
+  editImgDataURLs = [];
+  document.getElementById("e-images").value     = "";
+  document.getElementById("e-img-count").style.display = "none";
+
+  // ── Populate all text fields ──
+  document.getElementById("e-orderNo").value      = d.Order_No      || "";
+  document.getElementById("e-party").value        = d.Party_Name    || "";
+  document.getElementById("e-brand").value        = d.Brand_Name    || "";
+  document.getElementById("e-fabric").value       = d.Fabric_Name   || "";
+  document.getElementById("e-category").value     = d.Category      || "";
+  document.getElementById("e-bedSize").value      = d.Bed_Size      || "";
+  document.getElementById("e-ply").value          = d.Blanket_Ply   || "";
+  document.getElementById("e-weight").value       = d.Weight_GSM    || "";
+  document.getElementById("e-totalDesigns").value = d.Total_Designs || 0;
+  document.getElementById("e-colors").value       = d.Color_Count   || 0;
+  document.getElementById("e-designer").value     = d.Designer_Name || "";
+  document.getElementById("e-status").value       = d.Status        || "Pending";
+  document.getElementById("e-printStatus").value  = d.Print_Status  || "Not_Printed";
+  // Production & packing fields
+  document.getElementById("e-sattan").value       = d.Sattan        || "";
+  document.getElementById("e-emboss").value       = d.Emboss        || "";
+  document.getElementById("e-labels").value       = d.Labels        || "";
+  document.getElementById("e-rollQty").value      = d.Roll_Qty      || "";
+  document.getElementById("e-packingBore").value  = d.Packing_Bore  || "";
+  document.getElementById("e-printingUnit").value = d.Printing_Unit || "";
+  document.getElementById("e-noteMaster").value   = d.Note_Master   || "";
+  document.getElementById("e-notePacking").value  = d.Note_Packing  || "";
+  document.getElementById("e-boraPacking").value  = d.Bora_Packing  || "";
+  document.getElementById("e-boxPacking").value   = d.Box_Packing   || "";
+
+  // ── Show existing PDF link in sidebar ──
+  const pdfBox = document.getElementById("e-pdf-existing");
+  const pdfAnchor = document.getElementById("e-pdf-link");
+  const link = String(d.PDF_Link || "").trim();
+  if (link && link.startsWith("http")) {
+    pdfBox.style.display  = "block";
+    pdfAnchor.href        = link;
+    pdfAnchor.innerHTML   = '<i class="ph ph-arrow-square-out"></i> Open PDF in Drive';
+    // ── Show PDF in preview panel ──
+    editPdfLink    = link;
+    _showPdfViewer = true;
+    _pptActivePage = -1; // -1 = PDF viewer page
+  } else {
+    pdfBox.style.display = "none";
+    editPdfLink    = "";
+    _showPdfViewer = false;
+    _pptActivePage = 0;
+  }
+
+  // ── Sync ALL fields to A4 preview (design page + production page) ──
+  syncPreviewFromOrder(d);
+  _gridMode = "edit";
+
+  // Start with blank design grid (user can upload new images to regenerate PDF)
+  editImgDataURLs = [];
+  allPages        = [[]];
+  currPageIdx     = 0;
+  _renderPPT();
+  _renderPageTabs();
+
+  // Ensure production page preview shows all loaded values
+  _syncP2FromActiveForm();
+}
+
+// ─────────────────────────────────────────
+// Push order object → A4 preview fields
+// ─────────────────────────────────────────
+function syncPreviewFromOrder(d) {
+  // Page 2 values (these IDs are stable in HTML)
+  const p2set = (id, v) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = (v === 0 || v) ? String(v) : "—";
+  };
+  const dateStr = new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+  p2set("p2-orderNo",     d.Order_No);
+  p2set("p2-party",       d.Party_Name);
+  p2set("p2-date",        dateStr);
+  p2set("p2-sattan",      d.Sattan);
+  p2set("p2-emboss",      d.Emboss);
+  p2set("p2-labels",      d.Labels);
+  p2set("p2-rollQty",     d.Roll_Qty);
+  p2set("p2-packingBore", d.Packing_Bore);
+  p2set("p2-printingUnit",d.Printing_Unit);
+  p2set("p2-boraPacking", d.Bora_Packing);
+  p2set("p2-boxPacking",  d.Box_Packing);
+  p2set("p2-bedSize",     d.Bed_Size);
+  p2set("p2-noteMaster",  d.Note_Master);
+  p2set("p2-notePacking", d.Note_Packing);
+
+  // Store data for _syncInfoPanelInElement (used by PPT stage & print)
+  window._editOrderData = {
+    orderNo:  d.Order_No      || "—",
+    party:    d.Party_Name    || "—",
+    brand:    d.Brand_Name    || "—",
+    fabric:   d.Fabric_Name   || "—",
+    bedSize:  d.Bed_Size      || "—",
+    ply:      d.Blanket_Ply   || "—",
+    weight:   d.Weight_GSM    ? d.Weight_GSM + " GM" : "—",
+    category: d.Category      || "—",
+    colors:   d.Color_Count   || "—",
+    total:    d.Total_Designs || "—",
+    designer: d.Designer_Name || "—",
+    date:     dateStr
+  };
+}
+
+// ─────────────────────────────────────────
+// UPDATE ORDER (Tab 2 → Edit form)
+// ─────────────────────────────────────────
+async function updateOrder() {
+  if (!editingNo) { toast("⚠️ No order selected", "error"); return; }
+
+  const party = document.getElementById("e-party").value.trim();
+  if (!party) { toast("⚠️ Party Name is required!", "error"); return; }
+
+  const btn = document.getElementById("btn-update");
+  btn.disabled = true;
+
+  // ── Generate new PDF only if user uploaded new designs ──
+  let pdfBase64 = "";
+  let pdfFileName = "";
+
+  if (editImgDataURLs.length > 0) {
+    pdfFileName = `SIHF_${editingNo}_${party.replace(/\s+/g, "_")}.pdf`;
+    btn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Generating PDF...';
+    try {
+      pdfBase64 = await generatePdfBase64();
+    } catch (pdfErr) {
+      console.error("PDF generation failed:", pdfErr);
+      toast("⚠️ PDF generation failed — keeping existing PDF", "info");
+      pdfBase64 = "";
+    }
+  }
+
+  btn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Updating Sheet...';
+
+  // ── STEP 1: Save all text data (tiny payload — always succeeds) ──
+  const textPayload = {
+    action: "save",
+    orderData: {
+      orderNo:        editingNo,
+      partyName:      party,
+      brandName:      document.getElementById("e-brand").value,
+      fabricName:     document.getElementById("e-fabric").value,
+      category:       document.getElementById("e-category").value,
+      bedSize:        document.getElementById("e-bedSize").value,
+      blanketPly:     document.getElementById("e-ply").value,
+      weight:         document.getElementById("e-weight").value,
+      totalDesigns:   document.getElementById("e-totalDesigns").value,
+      colors:         document.getElementById("e-colors").value,
+      designerName:   document.getElementById("e-designer").value,
+      status:         document.getElementById("e-status").value,
+      printStatus:    document.getElementById("e-printStatus").value,
+      sattan:         document.getElementById("e-sattan").value,
+      emboss:         document.getElementById("e-emboss").value,
+      labels:         document.getElementById("e-labels").value,
+      rollQty:        document.getElementById("e-rollQty").value,
+      packingBore:    document.getElementById("e-packingBore").value,
+      printingUnit:   document.getElementById("e-printingUnit").value,
+      noteMaster:     document.getElementById("e-noteMaster").value,
+      notePacking:    document.getElementById("e-notePacking").value,
+      boraPacking:    document.getElementById("e-boraPacking").value,
+      boxPacking:     document.getElementById("e-boxPacking").value,
+      // No pdfBase64, no imagesJson in this step
+      pdfBase64:      "",
+      pdfFileName:    "",
+      imagesJson:     ""
+    }
+  };
+
+  try {
+    const r1 = await postGAS(textPayload);
+    if (!r1.success) {
+      toast("❌ " + r1.error, "error");
+      return;
+    }
+    toast("✅ Order updated!" + (pdfBase64 ? " Uploading PDF..." : ""), "success");
+
+    // ── STEP 2: Upload PDF separately if new designs uploaded ──
+    if (pdfBase64 && pdfFileName) {
+      btn.innerHTML = '<i class="ph ph-spinner" style="animation:spin 1s linear infinite"></i> Uploading PDF to Drive...';
+      try {
+        const pdfPayload = {
+          action:      "uploadPdf",
+          orderNo:     editingNo,
+          pdfBase64:   pdfBase64,
+          pdfFileName: pdfFileName
+        };
+        const r2 = await postGAS(pdfPayload);
+        if (r2.success && r2.pdfLink) {
+          toast("✅ PDF uploaded to Drive 📄", "success");
+        } else {
+          toast("⚠️ Updated but PDF upload failed — retry karo", "info");
+        }
+      } catch(pdfErr) {
+        toast("⚠️ Updated but PDF upload failed: " + pdfErr.message, "info");
+      }
+    }
+
+    setTimeout(cancelEdit, 1800);
+
+  } catch(err) {
+    toast("❌ " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="ph ph-check-circle"></i> Update Order';
+  }
+}
+
+function cancelEdit() {
+  document.getElementById("s-query").value = "";
+  document.getElementById("edit-form").style.display = "none";
+  document.getElementById("e-images").value = "";
+  document.getElementById("e-img-count").style.display = "none";
+  document.getElementById("e-pdf-existing").style.display = "none";
+  editingNo           = null;
+  editImgDataURLs     = [];
+  editPdfLink         = "";
+  _showPdfViewer      = false;
+  window._editOrderData = null;
+  // Reset to blank state
+  allPages         = [[]];
+  currPageIdx      = 0;
+  _pptActivePage   = 0;
+  _gridMode        = "create";
+  _renderPPT();
+  _renderPageTabs();
+}
+
+// ─────────────────────────────────────────
+// LOAD ALL ORDERS (Tab 3)
+// ─────────────────────────────────────────
+async function loadAllOrders() {
+  if (!GAS_URL) { toast("❌ GAS URL not configured in HTML!", "error"); return; }
+
+  document.getElementById("tbl-body").innerHTML =
+    `<tr><td colspan="12" class="no-data"><i class="ph ph-spinner" style="animation:spin 1s linear infinite;font-size:2rem;"></i><br>Loading...</td></tr>`;
+
+  try {
+    const r = await getGAS("all", {});
+    if (r.success) {
+      allRows = r.data || [];
+      renderTable(allRows);
+    } else {
+      toast("❌ " + r.error, "error");
+    }
+  } catch(err) {
+    toast("❌ " + err.message, "error");
+  }
+}
+
+function applyFilters() {
+  const f = {
+    Order_No:     document.getElementById("f-orderNo").value,
+    Party_Name:   document.getElementById("f-party").value,
+    Brand_Name:   document.getElementById("f-brand").value,
+    Designer_Name:document.getElementById("f-designer").value,
+    Status:       document.getElementById("f-status").value,
+    Print_Status: document.getElementById("f-printStatus").value
+  };
+
+  const filtered = allRows.filter(row => {
+    for (const [k, v] of Object.entries(f)) {
+      if (v && v.trim()) {
+        if (!String(row[k] || "").toLowerCase().includes(v.toLowerCase())) return false;
+      }
+    }
+    return true;
+  });
+
+  renderTable(filtered);
+}
+
+function clearFilters() {
+  ["f-orderNo","f-party","f-brand","f-designer","f-status","f-printStatus"]
+    .forEach(id => { document.getElementById(id).value = ""; });
+  renderTable(allRows);
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById("tbl-body");
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" class="no-data"><i class="ph ph-database"></i><br>No records found</td></tr>`;
+    document.getElementById("tbl-count").innerText = "Records: 0";
+    return;
+  }
+
+  tbody.innerHTML = rows.map((r, i) => {
+    const ts = r.Timestamp ? new Date(r.Timestamp).toLocaleDateString("en-IN") : "—";
+    return `
+      <tr>
+        <td style="color:#94a3b8;font-weight:600;">${i+1}</td>
+        <td style="font-weight:700;color:#3b82f6;">${r.Order_No||"—"}</td>
+        <td>${r.Party_Name||"—"}</td>
+        <td>${r.Brand_Name||"—"}</td>
+        <td>${r.Fabric_Name||"—"}</td>
+        <td>${r.Bed_Size||"—"}</td>
+        <td style="text-align:center;font-weight:700;">${r.Total_Designs||0}</td>
+        <td>${r.Designer_Name||"—"}</td>
+        <td>${badgeStatus(r.Status)}</td>
+        <td>${badgePrint(r.Print_Status)}</td>
+        <td style="color:#94a3b8;">${ts}</td>
+        <td>
+          <div style="display:flex;gap:5px;">
+            ${pdfLinkBtn(r.PDF_Link)}
+            <button class="act-btn act-edit" onclick="editFromTable('${escQ(r.Order_No)}')" title="Edit">
+              <i class="ph ph-pencil-simple"></i>
+            </button>
+            <button class="act-btn act-del" onclick="delConfirm('${escQ(r.Order_No)}')" title="Delete">
+              <i class="ph ph-trash-simple"></i>
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  }).join("");
+
+  document.getElementById("tbl-count").innerText = "Records: " + rows.length;
+}
+
+function pdfLinkBtn(link) {
+  const url = String(link || "").trim();
+  if (!url || !url.startsWith("http")) {
+    return `<button class="act-btn" style="background:#e5e7eb;color:#9ca3af;cursor:not-allowed;" disabled title="No PDF">
+      <i class="ph ph-file-x"></i>
+    </button>`;
+  }
+  return `<a href="${url}" target="_blank" rel="noopener" class="act-btn" style="background:#059669;color:white;text-decoration:none;display:inline-flex;align-items:center;" title="View PDF in Drive">
+    <i class="ph ph-file-pdf"></i>
+  </a>`;
+}
+
+function badgeStatus(s) {
+  const map = {
+    "Pending":     ["badge-pending",  "Pending"],
+    "In_Progress": ["badge-progress", "In Progress"],
+    "Completed":   ["badge-complete", "Completed"]
+  };
+  const [cls, lbl] = map[s] || ["badge-pending","—"];
+  return `<span class="badge ${cls}">${lbl}</span>`;
+}
+
+function badgePrint(s) {
+  const map = {
+    "Not_Printed": ["badge-notprint","Not Printed"],
+    "Printed":     ["badge-printed", "Printed"],
+    "Re_Printing": ["badge-reprint", "Re-Printing"]
+  };
+  const [cls, lbl] = map[s] || ["badge-notprint","—"];
+  return `<span class="badge ${cls}">${lbl}</span>`;
+}
+
+function escQ(s) { return String(s||"").replace(/'/g,"\\'"); }
+
+function editFromTable(orderNo) {
+  document.getElementById("tab-search").click();
+  document.getElementById("s-query").value = orderNo;
+  doSearch();
+}
+
+async function delConfirm(orderNo) {
+  if (!confirm(`⚠️ Order "${orderNo}" delete karna chahte ho?\nYe action undo nahi hogi!`)) return;
+  try {
+    const r = await postGAS({ action: "delete", orderNo });
+    if (r.success) {
+      toast("✅ " + r.message, "success");
+      loadAllOrders();
+    } else {
+      toast("❌ " + r.error, "error");
+    }
+  } catch(err) {
+    toast("❌ " + err.message, "error");
+  }
+}
+
+// ─────────────────────────────────────────
+// RESET / PDF / PRINT
+// ─────────────────────────────────────────
+function resetForm() {
+  // Clear text/number inputs
+  ["c-orderNo","c-party","c-brand","c-fabric","c-weight","c-colors","c-designer",
+   "c-totalDesigns","c-labels","c-rollQty","c-packingBore","c-boraPacking","c-boxPacking"]
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+  // Clear selects
+  ["c-category","c-bedSize","c-ply","c-status","c-printStatus",
+   "c-sattan","c-emboss","c-printingUnit"]
+    .forEach(id => { const el=document.getElementById(id); if(el) el.selectedIndex=0; });
+  // Clear textareas
+  ["c-noteMaster","c-notePacking"]
+    .forEach(id => { const el=document.getElementById(id); if(el) el.value=""; });
+  // Clear file input
+  const fi = document.getElementById("c-images");
+  if (fi) fi.value = "";
+  // Reset A4 info panel preview (d-* fields)
+  ["d-orderNo","d-party","d-brand","d-fabric","d-bedSize","d-ply",
+   "d-weight","d-category","d-colors","d-totalDesigns","d-designer"]
+    .forEach(id => { document.querySelectorAll(`[id="${id}"]`).forEach(el => { el.innerText="—"; }); });
+  // Reset page 2 preview
+  ["p2-orderNo","p2-party","p2-sattan","p2-emboss","p2-labels","p2-rollQty",
+   "p2-packingBore","p2-printingUnit","p2-boraPacking","p2-boxPacking",
+   "p2-bedSize","p2-noteMaster","p2-notePacking"]
+    .forEach(id => { const el=document.getElementById(id); if(el) el.innerText="—"; });
+
+  // Reset multi-page state
+  allPages            = [[]];
+  currPageIdx         = 0;
+  _pptActivePage      = 0;
+  _gridMode           = "create";
+  editPdfLink         = "";
+  _showPdfViewer      = false;
+  window._editOrderData = null;
+  _renderPPT();
+  _renderPageTabs();
+
+  // Reset packing table to one blank row
+  clearPackingRows();
+  addPackingRow();
+}
+
+// ═══════════════════════════════════════════════════════════
+// 📦  PACKING DETAILS TABLE — Auto-calculate % + CHECK
+// Formula: CHECK = TRUE if TOTAL_PCS === 1ST + RASCHEL_2ND +
+//          PRINTING_2ND + FINISH_2ND + BORDER_CUT
+//
+// ⚠️ IMPORTANT: Always scope DOM queries to #printArea2 to avoid
+// clashing with duplicate IDs in PPT thumbnail strip clones.
+// ═══════════════════════════════════════════════════════════
+
+let _packingRowId = 0;
+
+// Scoped getters — always look inside the LIVE printArea2, never globally
+function _pkEl(id)   { return document.querySelector(`#printArea2 #${id}`); }
+function _pkVal(id)  { const el = _pkEl(id); return el ? (parseFloat(el.value) || 0) : 0; }
+function _pkTbody()  { return document.querySelector("#printArea2 #packing-tbody"); }
+
+function addPackingRow() {
+  const tbody = _pkTbody();
+  if (!tbody) { console.warn("packing-tbody not found inside #printArea2"); return; }
+  const rid = ++_packingRowId;
+
+  const tr = document.createElement("tr");
+  tr.id = `pk-row-${rid}`;
+  tr.style.cssText = "font-size:7pt;";
+
+  // Use addEventListener instead of inline oninput to avoid global-scope issues
+  tr.innerHTML = `
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-sd-${rid}" type="date" style="width:74px;border:none;outline:none;font-size:6.5pt;padding:2px;background:transparent;">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-ed-${rid}" type="date" style="width:74px;border:none;outline:none;font-size:6.5pt;padding:2px;background:transparent;">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-tp-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-1st-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-r2-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-p2-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-f2-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-bc-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-ow-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <input id="pk-uw-${rid}" type="number" style="width:52px;border:none;outline:none;font-size:7pt;font-weight:600;padding:2px 3px;background:transparent;text-align:center;" placeholder="0">
+    </td>
+    <td id="pk-tot2-${rid}" style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;font-weight:700;color:#1e40af;">—</td>
+    <td id="pk-chk-${rid}"  style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;font-weight:900;">—</td>
+    <td class="no-print" style="border:1px solid #cbd5e1;padding:2px 3px;text-align:center;">
+      <button id="pk-del-${rid}" style="background:#fee2e2;color:#dc2626;border:none;border-radius:3px;font-size:.65rem;padding:1px 5px;cursor:pointer;font-weight:700;" title="Delete Row">✕</button>
+    </td>
+  `;
+
+  tbody.appendChild(tr);
+
+  // Attach input listeners via JS (not inline oninput) — scoped to this row's inputs
+  tr.querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("input", () => _recalcRow(rid));
+  });
+
+  // Delete row button
+  const delBtn = tr.querySelector(`#pk-del-${rid}`);
+  if (delBtn) delBtn.addEventListener("click", () => {
+    tr.remove();
+    // Note: _packingRowId is not decremented — it's a monotonic counter; that's intentional
+  });
+
+  _recalcRow(rid);
+}
+
+function _recalcRow(rid) {
+  // Scoped to #printArea2 to avoid thumbnail clone ID collisions
+  const p2 = document.getElementById("printArea2");
+  if (!p2) return;
+
+  const g = id => {
+    const el = p2.querySelector(`#${id}`);
+    return el ? (parseFloat(el.value) || 0) : 0;
+  };
+
+  const totalPcs = g(`pk-tp-${rid}`);
+  const first    = g(`pk-1st-${rid}`);
+  const raschel  = g(`pk-r2-${rid}`);
+  const printing = g(`pk-p2-${rid}`);
+  const finish   = g(`pk-f2-${rid}`);
+  const border   = g(`pk-bc-${rid}`);
+  const overW    = g(`pk-ow-${rid}`);
+  const underW   = g(`pk-uw-${rid}`);
+
+  const total2nd = raschel + printing + finish + border + overW + underW;
+  const tot2pct  = totalPcs > 0 ? ((total2nd / totalPcs) * 100).toFixed(2) : "0.00";
+
+  const sumParts = first + raschel + printing + finish + border;
+  const check    = (totalPcs > 0 && totalPcs === sumParts) ? "TRUE" : "FALSE";
+  const checkClr = check === "TRUE" ? "#16a34a" : "#dc2626";
+
+  const tot2El = p2.querySelector(`#pk-tot2-${rid}`);
+  const chkEl  = p2.querySelector(`#pk-chk-${rid}`);
+
+  if (tot2El) {
+    tot2El.innerHTML = totalPcs > 0
+      ? `${total2nd}<br><span style="font-size:6pt;color:#6b7280;">(${tot2pct}%)</span>`
+      : "—";
+  }
+  if (chkEl) {
+    chkEl.innerHTML = totalPcs > 0
+      ? `<span style="color:${checkClr};">${check}</span>`
+      : "—";
+  }
+}
+
+function clearPackingRows() {
+  const tbody = _pkTbody();
+  if (tbody) tbody.innerHTML = "";
+  _packingRowId = 0;
+}
+
+// ═══════════════════════════════════════════════════════════
+// 🖨️  PRINT & PDF — Clean multi-page output
+// ═══════════════════════════════════════════════════════════
+
+// Helper: copy input values from original to clone as visible text spans
+// cloneNode(true) does NOT copy .value — this fixes that for PDF/print/thumbnails
+function _bakeInputValues(original, clone) {
+  const origInputs  = original.querySelectorAll("input, textarea, select");
+  const cloneInputs = clone.querySelectorAll("input, textarea, select");
+  origInputs.forEach((orig, i) => {
+    if (!cloneInputs[i]) return;
+    const v = orig.value || "";
+    const span = document.createElement("span");
+    span.style.cssText = "font-size:7pt;font-weight:600;color:#1e293b;display:inline-block;text-align:center;min-width:20px;";
+    if (orig.type === "date" && v) {
+      try { span.textContent = new Date(v).toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"2-digit"}); }
+      catch(_) { span.textContent = v; }
+    } else {
+      span.textContent = v || "";
+    }
+    cloneInputs[i].replaceWith(span);
+  });
+}
+
+// Build a fresh DOM element containing ALL A4 pages (design pages + production page)
+// Works correctly whether printArea2 is currently in #p2-storage or #ppt-stage
+function _buildAllPagesDOM() {
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "width:297mm;background:white;";
+
+  // ── Design pages ──
+  const totalPg = allPages.length;
+  allPages.forEach((pageImgs, pgIdx) => {
+    const a4 = _buildA4PageElement(pageImgs, pgIdx, totalPg);
+    a4.querySelectorAll(".card-del,.card-drag,.no-print").forEach(el => el.remove());
+    _syncInfoPanelInElement(a4);
+    // Exact A4 landscape height — no page-break-after (html2pdf splits by height)
+    a4.style.height   = "210mm";
+    a4.style.overflow = "hidden";
+    // Strip IDs to avoid duplicate-ID issues in multi-copy DOM
+    a4.querySelectorAll("[id]").forEach(el => {
+      el.setAttribute("data-orig-id", el.id);
+      el.removeAttribute("id");
+    });
+    wrap.appendChild(a4);
+  });
+
+  // ── Production/Packing page ──
+  // SYNC form values → p2-* BEFORE cloning
+  _syncP2FromActiveForm();
+  const p2src = document.getElementById("printArea2");
+  if (p2src) {
+    const p2c = p2src.cloneNode(true);
+    p2c.querySelectorAll(".no-print").forEach(el => el.remove());
+    p2c.removeAttribute("id");
+    p2c.style.marginTop = "0";
+    p2c.style.display   = "";
+    p2c.style.height    = "210mm";
+    p2c.style.overflow  = "hidden";
+    p2c.querySelectorAll("[disabled]").forEach(el => el.removeAttribute("disabled"));
+
+    // ⚠️ CRITICAL FIX: cloneNode may not copy innerText reliably on hidden elements.
+    // Explicitly push ALL form values into the CLONE's p2-* divs.
+    _pushValuesIntoClone(p2c);
+
+    // Bake packing table input values into clone as text spans
+    _bakeInputValues(p2src, p2c);
+    wrap.appendChild(p2c);
+  }
+
+  return wrap;
+}
+
+// Push form field values directly into a printArea2 clone's p2-* elements
+// This is the GUARANTEED way — doesn't depend on cloneNode copying text correctly
+function _pushValuesIntoClone(clone) {
+  const isEdit = _gridMode === "edit" && editingNo;
+  const pre    = isEdit ? "e-" : "c-";
+
+  const fields = {
+    "orderNo":     "p2-orderNo",
+    "party":       "p2-party",
+    "sattan":      "p2-sattan",
+    "emboss":      "p2-emboss",
+    "labels":      "p2-labels",
+    "rollQty":     "p2-rollQty",
+    "packingBore": "p2-packingBore",
+    "printingUnit":"p2-printingUnit",
+    "boraPacking": "p2-boraPacking",
+    "boxPacking":  "p2-boxPacking",
+    "bedSize":     "p2-bedSize",
+    "noteMaster":  "p2-noteMaster",
+    "notePacking": "p2-notePacking"
+  };
+
+  for (const [field, targetId] of Object.entries(fields)) {
+    const src = document.getElementById(pre + field);
+    const tgt = clone.querySelector(`[id="${targetId}"]`);
+    if (src && tgt) {
+      tgt.innerText = src.value || "—";
+    }
+  }
+
+  // Date
+  const dateEl = clone.querySelector('[id="p2-date"]');
+  if (dateEl) dateEl.innerText = new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+}
+
+// ── PRINT via window.print() ──────────────────────────────
+function doPrint() {
+  const mount = _buildAllPagesDOM();
+  mount.id = "_print_mount";
+  document.body.appendChild(mount);
+
+  // Small delay so browser renders the DOM before print dialog
+  setTimeout(() => {
+    window.print();
+    // Remove after print dialog (use afterprint event for reliability)
+    const cleanup = () => {
+      if (document.body.contains(mount)) document.body.removeChild(mount);
+      window.removeEventListener("afterprint", cleanup);
+    };
+    window.addEventListener("afterprint", cleanup);
+    // Fallback: remove after 5s if afterprint doesn't fire
+    setTimeout(cleanup, 5000);
+  }, 150);
+}
+
+// ── DOWNLOAD PDF ──────────────────────────────────────────
+async function downloadPDF() {
+  // Pick values from whichever form is active
+  const isEdit  = _gridMode === "edit" && editingNo;
+  const party   = isEdit
+    ? (document.getElementById("e-party")?.value   || "Order")
+    : (document.getElementById("c-party")?.value   || "Order");
+  const oNo     = isEdit
+    ? editingNo
+    : (document.getElementById("c-orderNo")?.value || Date.now());
+  const fname = `SIHF_${oNo}_${party.replace(/\s+/g,"_")}.pdf`;
+
+  const pdfData = await _generatePdfBlob();
+  if (!pdfData) { toast("❌ PDF generation failed", "error"); return; }
+
+  // Trigger browser download
+  const url = URL.createObjectURL(pdfData);
+  const a   = document.createElement("a");
+  a.href    = url; a.download = fname;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+// ── GENERATE PDF BASE64 (for Drive upload) ────────────────
+async function generatePdfBase64() {
+  const blob = await _generatePdfBlob();
+  if (!blob) throw new Error("PDF generation failed — no content");
+  return await new Promise((res, rej) => {
+    const reader = new FileReader();
+    reader.onloadend = () => res(reader.result);
+    reader.onerror   = rej;
+    reader.readAsDataURL(blob);
+  });
+}
+
+// Core PDF engine — renders DOM to PDF blob
+async function _generatePdfBlob() {
+  const content = _buildAllPagesDOM();
+
+  // Mount off-screen but still in the layout (html2canvas requires visible DOM)
+  // Use position:fixed left off-screen — avoids scroll offset issues and never overlaps UI
+  const outer = document.createElement("div");
+  outer.style.cssText = [
+    "position:fixed",
+    "top:0",
+    "left:-9999px",
+    "width:297mm",
+    "pointer-events:none",
+    "background:white",
+    "z-index:9999"
+  ].join(";");
+  outer.appendChild(content);
+  document.body.appendChild(outer);
+
+  // Force layout
+  void outer.offsetHeight;
+
+  const opt = {
+    margin:     0,
+    image:      { type:"jpeg", quality:0.95 },
+    html2canvas:{ scale:2, useCORS:true, logging:false, backgroundColor:"#ffffff" },
+    jsPDF:      { unit:"mm", format:"a4", orientation:"landscape" }
+  };
+
+  try {
+    const blob = await html2pdf().set(opt).from(content).outputPdf("blob");
+    return blob;
+  } catch(err) {
+    console.error("PDF error:", err);
+    return null;
+  } finally {
+    if (document.body.contains(outer)) document.body.removeChild(outer);
+  }
+}
+
+// Legacy aliases (used by generatePdfBase64 calls in saveOrder/updateOrder)
+async function _buildPrintWrapper() { return _buildAllPagesDOM(); }
+
+// ─────────────────────────────────────────
+// API HELPERS
+// ─────────────────────────────────────────
+async function getGAS(action, params) {
+  let url = GAS_URL + "?action=" + encodeURIComponent(action);
+  for (const [k, v] of Object.entries(params || {})) {
+    if (v !== undefined && v !== "") url += "&" + encodeURIComponent(k) + "=" + encodeURIComponent(v);
+  }
+  try {
+    const r = await fetch(url, { redirect: "follow" });
+    if (!r.ok) throw new Error("HTTP " + r.status + " — " + r.statusText);
+    return await r.json();
+  } catch (err) {
+    throw new Error(_friendlyError(err));
+  }
+}
+
+async function postGAS(body) {
+  try {
+    const r = await fetch(GAS_URL, {
+      method: "POST",
+      // ⚠️ CRITICAL: NO "Content-Type" header.
+      // GAS Web Apps don't handle CORS preflight (OPTIONS).
+      // Adding "application/json" triggers preflight → "Failed to fetch".
+      // Body is still JSON; e.postData.contents reads it fine server-side.
+      body: JSON.stringify(body),
+      redirect: "follow"
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status + " — " + r.statusText);
+    return await r.json();
+  } catch (err) {
+    throw new Error(_friendlyError(err));
+  }
+}
+
+// Convert cryptic browser errors into actionable messages
+function _friendlyError(err) {
+  const msg = err.message || String(err);
+  if (msg === "Failed to fetch" || msg.includes("NetworkError")) {
+    return "Cannot reach Apps Script. Verify: (1) GAS_URL ends with /exec (not /dev or /edit) (2) Deployed as Web App with access = Anyone (3) After code changes, you re-deployed (Deploy → Manage Deployments → ✏️ Edit → New Version → Deploy)";
+  }
+  if (msg.includes("HTTP 401") || msg.includes("HTTP 403")) {
+    return "Permission denied. Deploy with 'Who has access: Anyone' and run setupSheet() once in the editor to grant authorizations.";
+  }
+  if (msg.includes("HTTP 404")) {
+    return "URL not found. Most likely the deployment was deleted. Re-deploy and update GAS_URL in HTML.";
+  }
+  if (msg.includes("Unexpected token") || msg.includes("JSON")) {
+    return "Got HTML instead of JSON — usually means GAS returned a login/error page. Re-deploy with access = Anyone.";
+  }
+  return msg;
+}
+
+// ─────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────
+let _toastTimer = null;
+function toast(msg, type = "info") {
+  const existing = document.querySelector(".toast");
+  if (existing) existing.remove();
+  if (_toastTimer) clearTimeout(_toastTimer);
+
+  const el = document.createElement("div");
+  el.className = "toast toast-" + type;
+  el.innerHTML = `<i class="ph ph-${type==="success"?"check-circle":type==="error"?"x-circle":"info"}"></i> ${msg}`;
+  document.body.appendChild(el);
+
+  _toastTimer = setTimeout(() => { if (el.parentNode) el.remove(); }, 4000);
+}
+
+// ─────────────────────────────────────────
+// MISC HELPERS
+// ─────────────────────────────────────────
+function setDate() {
+  const dateStr = new Date().toLocaleDateString("en-IN",{day:"2-digit",month:"short",year:"numeric"});
+  const d1 = document.getElementById("d-date");
+  const d2 = document.getElementById("p2-date");
+  if(d1) d1.innerText = dateStr;
+  if(d2) d2.innerText = dateStr;
+}
+
+// CSS spinner keyframe (inject once)
+const _style = document.createElement("style");
+_style.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
+document.head.appendChild(_style);
+
+// ─────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────
+window.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
