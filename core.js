@@ -1,0 +1,980 @@
+/* Nexus 2.0 — core: store, auth, RBAC, FMS glue, router, helpers. */
+'use strict';
+const NEXUS_BUILD = '2026-09-24-A';
+console.log('Nexus build', NEXUS_BUILD);
+
+/* ================= helpers ================= */
+const $ = (s, r) => (r || document).querySelector(s);
+const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const num = v => { const n = parseFloat(v); return isNaN(n) ? 0 : n; };
+const clone = o => JSON.parse(JSON.stringify(o));
+const norm = s => String(s == null ? '' : s).trim().toLowerCase().replace(/\s+/g, ' ');
+const nowIso = () => new Date().toISOString();
+const todayYmd = () => ymdOf(new Date());
+function ymdOf(d) { d = new Date(d); const p = n => String(n).padStart(2, '0'); return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); }
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtD(v) { if (!v) return ''; const d = new Date(v); if (isNaN(d)) return ''; return d.getDate() + ' ' + MON[d.getMonth()] + ' ' + d.getFullYear(); }
+function fmtDT(v) { if (!v) return ''; const d = new Date(v); if (isNaN(d)) return ''; const p = n => String(n).padStart(2, '0'); return fmtD(d) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes()); }
+function fmtDelay(min) {
+  if (!min) return '';
+  const day = calendar().dayMinutes || 480;
+  const d = Math.floor(min / day), h = Math.floor((min % day) / 60), m = min % 60;
+  return (d ? d + 'd ' : '') + (h ? h + 'h ' : '') + (!d && m ? m + 'm' : '').trim() || '0m';
+}
+const money = v => num(v).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const qtyFmt = v => num(v).toLocaleString('en-IN', { maximumFractionDigits: 3 });
+function stCls(s) { return String(s || '').replace(/[^A-Za-z]/g, ''); }
+function stHtml(s) { return '<span class="st ' + stCls(s) + '">' + esc(s) + '</span>'; }
+function seg(name, options, value, attrs) {
+  return '<span class="seg" data-seg="' + esc(name) + '" ' + (attrs || '') + '>' + options.map(o => {
+    const v = typeof o === 'object' ? o.v : o, l = typeof o === 'object' ? o.l : (o === '' ? 'None' : o);
+    return '<button type="button" data-v="' + esc(v) + '" class="' + (String(v) === String(value == null ? '' : value) ? 'on' : '') + '">' + esc(l) + '</button>';
+  }).join('') + '</span>';
+}
+function segVal(el) { const b = el && el.querySelector('button.on'); return b ? b.dataset.v : ''; }
+async function hashPin(email, pin) {
+  const s = norm(email) + '|' + pin;
+  try { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); }
+  catch (e) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return 'f' + (h >>> 0).toString(16); }
+}
+let flashTimer;
+function flash(msg, type) {
+  const f = $('#flash'); f.innerHTML = msg; f.className = type === 'err' ? 'err' : '';
+  clearTimeout(flashTimer); flashTimer = setTimeout(() => f.classList.add('hidden'), type === 'err' ? 7000 : 4000);
+}
+
+/* ================= store ================= */
+// ?demo — a demo copy with sample data that lives only in this browser; it never connects to the cloud
+const DEMO = /[?&]demo\b/.test(location.search);
+// ?sandbox — Super Admin only: the real cloud data is read once into this browser tab; every change stays in the tab and nothing is ever written back
+const SANDBOX = !DEMO && /[?&]sandbox\b/.test(location.search);
+const DB_KEY = DEMO ? 'nexus2_demo_db' : 'nexus2_db_v8';
+const ME_KEY = DEMO ? 'nexus2_demo_me' : SANDBOX ? 'nexus2_sbx_me' : 'nexus2_me';
+// browser copy of the data: local mode only. In cloud mode the data always loads fresh from Supabase,
+// so no copy is kept in the browser (it can be too big for browser storage, and data stays off the device)
+function saveLocal() {
+  try {
+    if (CLOUD) { localStorage.removeItem(DB_KEY); return; }
+    localStorage.setItem(DB_KEY, JSON.stringify(DB));
+  } catch (e) { flash('Browser storage full — export a backup from Settings.', 'err'); }
+}
+const COLS = ['users', 'roles', 'customers', 'items', 'materials', 'processes', 'orders', 'samples', 'dispatches', 'purchase_orders', 'sourcing', 'grns', 'inwards', 'vendors', 'issues', 'rsjw', 'rtvs', 'boms', 'job_cards', 'requisitions', 'tickets', 'checklist', 'checklist_log', 'escalations', 'attributes', 'item_types', 'mail_queue', 'requirements', 'prod_reports', 'prod_plans', 'wa_log', 'opening_stock', 'price_requests', 'moms', 'decisions', 'meetings', 'followups', 'travels', 'contacts', 'leads', 'vendor_requests', 'audit'];
+let DB = null;
+const CFG = window.NEXUS_CONFIG || {};
+// demo shares one demo table (nx_demo) between all demo users; it can never reach the real table
+const DEMO_SHARED = DEMO && !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase);
+const CLOUD = (!DEMO && !!(CFG.SUPABASE_URL && CFG.SUPABASE_ANON_KEY && window.supabase)) || DEMO_SHARED;
+const TBL = DEMO ? 'nx_demo' : 'nx_docs';
+let SB = null;
+
+/* ---- small dialogs used by approvals: a reason box, and an edit box for sending corrections back ---- */
+function formDialog(title, fields, okLabel, cb, danger) {
+  const old = $('#fxDlg'); if (old) old.remove();
+  const d = document.createElement('div'); d.id = 'fxDlg'; d.className = 'dlg-back';
+  d.innerHTML = '<div class="dlg"><div class="dlg-h">' + esc(title) + '</div><table class="jckv">' + fields.map(f => '<tr><td class="k">' + esc(f.l) + (f.req ? ' *' : '') + '</td><td class="v">' +
+    (f.type === 'textarea' ? '<textarea data-fx="' + f.k + '" rows="3">' + esc(f.value || '') + '</textarea>' : f.type === 'static' ? esc(f.value || '') :
+      f.type === 'select' ? '<select data-fx="' + f.k + '">' + (f.options || []).map(o => '<option' + (String(o) === String(f.value || '') ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>' : '<input data-fx="' + f.k + '" type="' + (f.type || 'text') + '"' + (f.type === 'number' ? ' min="0" step="any"' : '') + ' value="' + esc(f.value == null ? '' : f.value) + '">') + '</td></tr>').join('') +
+    '</table><div class="dlg-f"><span id="fxMsg" class="small late-txt"></span><span class="grow"></span><button class="btn" data-fx-cancel>Cancel</button><button class="btn ' + (danger ? 'danger' : 'primary') + '" data-fx-ok>' + esc(okLabel) + '</button></div></div>';
+  document.body.appendChild(d); const first = $('[data-fx]', d); if (first) first.focus();
+  d.addEventListener('keydown', ev => { if (ev.key === 'Escape') d.remove(); });
+  d.addEventListener('click', ev => {
+    if (ev.target.closest('[data-fx-cancel]')) { d.remove(); return; }
+    if (!ev.target.closest('[data-fx-ok]')) return;
+    const v = {}; fields.forEach(f => { const i = $('[data-fx="' + f.k + '"]', d); if (i) v[f.k] = f.type === 'number' ? num(i.value) : i.value.trim(); });
+    const miss = fields.find(f => f.req && (v[f.k] === '' || v[f.k] == null || (f.type === 'number' && !(v[f.k] > 0))));
+    if (miss) { $('#fxMsg', d).textContent = miss.l + ' is required.'; return; }
+    const err = cb(v); if (err) { $('#fxMsg', d).textContent = err; return; }
+    d.remove();
+  });
+}
+const reasonDialog = (title, okLabel, cb, danger) => formDialog(title, [{ k: 'why', l: 'Reason', type: 'textarea', req: true }], okLabel, v => cb(v.why), danger);
+
+/* ---- change log: every create / edit / delete is written to the audit log with who, when and what changed ---- */
+const SNAP = new Map();                       // col|id -> JSON of the last saved copy
+const NOLOG = new Set(['audit', 'mail_queue', 'wa_log', 'checklist_log']);
+const SKIP_KEYS = new Set(['updated_at', 'updated_by', 'created_at', 'created_by']);
+const SECRET_KEY = /pin|pwd|password|hash|secret/i;
+function snapAll() { SNAP.clear(); COLS.forEach(c => (DB[c] || []).forEach(d => SNAP.set(c + '|' + d.id, JSON.stringify(d)))); if (DB.settings) SNAP.set('settings|main', JSON.stringify(DB.settings)); }
+function shortVal(k, v) { if (SECRET_KEY.test(k)) return '•••'; if (v == null || v === '') return '—'; if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) return fmtDT(v); const t = typeof v === 'object' ? JSON.stringify(v) : String(v); return t.length > 60 ? t.slice(0, 57) + '…' : t; }
+function docRef(col, d) { return d.no || d.code || d.email || d.name || d.article || d.jc_no || (col === 'settings' ? 'Settings' : d.id); }
+function changeLog(col, doc, isDelete) {
+  if (NOLOG.has(col)) return;
+  const key = col + '|' + doc.id; const prevS = SNAP.get(key);
+  if (isDelete) { SNAP.delete(key); writeLog(col + '.delete', docRef(col, doc), 'deleted'); return; }
+  const nowS = JSON.stringify(doc); SNAP.set(key, nowS);
+  if (prevS === nowS) return;
+  if (!prevS) { writeLog(col + '.create', docRef(col, doc), 'created'); return; }
+  let prev = {}; try { prev = JSON.parse(prevS); } catch (e) { }
+  if (col === 'processes' && typeof specDiff === 'function') {   // an FMS: every step change in full, by step name
+    const rows = specDiff(prev.spec, doc.spec); const other = ['name', 'active', 'version'].filter(k => JSON.stringify(prev[k]) !== JSON.stringify(doc[k])).map(k => k + ': ' + shortVal(k, prev[k]) + ' → ' + shortVal(k, doc[k]));
+    if (rows.length || other.length) writeLog(col + '.edit', docRef(col, doc), other.concat(rows.length ? [specDiffText(rows)] : []).join('\n'));
+    return;
+  }
+  const diffs = [];
+  new Set(Object.keys(prev).concat(Object.keys(doc))).forEach(k => {
+    if (SKIP_KEYS.has(k)) return;
+    const a = JSON.stringify(prev[k]), b = JSON.stringify(doc[k]); if (a === b) return;
+    if (Array.isArray(prev[k]) || Array.isArray(doc[k])) {
+      const pa = prev[k] || [], pb = doc[k] || [];
+      const rows = []; for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+        const x = pa[i], y = pb[i]; if (JSON.stringify(x) === JSON.stringify(y)) continue;
+        if (!x) { rows.push(k + '[' + (i + 1) + '] added'); continue; } if (!y) { rows.push(k + '[' + (i + 1) + '] removed'); continue; }
+        if (typeof x === 'object' && typeof y === 'object') Object.keys(Object.assign({}, x, y)).forEach(f => { if (JSON.stringify(x[f]) !== JSON.stringify(y[f])) rows.push(k + '[' + (i + 1) + '].' + f + ': ' + shortVal(f, x[f]) + ' → ' + shortVal(f, y[f])); });
+        else rows.push(k + '[' + (i + 1) + ']: ' + shortVal(k, x) + ' → ' + shortVal(k, y));
+      }
+      diffs.push(...rows.slice(0, 12)); if (rows.length > 12) diffs.push('+' + (rows.length - 12) + ' more');
+    } else if (prev[k] && doc[k] && typeof prev[k] === 'object' && typeof doc[k] === 'object') {
+      Object.keys(Object.assign({}, prev[k], doc[k])).forEach(f => { if (JSON.stringify(prev[k][f]) !== JSON.stringify(doc[k][f])) diffs.push(k + '.' + f + ': ' + shortVal(f, prev[k][f]) + ' → ' + shortVal(f, doc[k][f])); });
+    } else diffs.push(k + ': ' + shortVal(k, prev[k]) + ' → ' + shortVal(k, doc[k]));
+  });
+  if (diffs.length) writeLog(col + '.edit', docRef(col, doc), diffs.join(' · '));
+}
+function writeLog(action, ref, detail) {
+  if (!ME) return;
+  const a = { id: uid(), at: nowIso(), user: ME ? ME.name : 'System', user_email: ME ? ME.email : '', action, ref: String(ref || ''), detail: String(detail || '').slice(0, 8000), auto: true };
+  (DB.audit || (DB.audit = [])).push(a); Store.persist('audit', a);
+}
+const Store = {
+  all(col) { return DB[col] || []; },
+  get(col, id) { return (DB[col] || []).find(d => d.id === id) || null; },
+  put(col, doc) {
+    if (!doc.id) doc.id = uid();
+    const now = nowIso(); const who = ME ? ME.name : 'System';
+    if (!doc.created_at) doc.created_at = now;
+    if (!doc.created_by) doc.created_by = who;
+    doc.updated_at = now; doc.updated_by = who;
+    changeLog(col, doc, false);
+    const list = DB[col] || (DB[col] = []);
+    const i = list.findIndex(d => d.id === doc.id);
+    if (i >= 0) list[i] = doc; else list.push(doc);
+    this.persist(col, doc); RES_CACHE.clear();
+    return doc;
+  },
+  del(col, id) {
+    const gone = this.get(col, id); if (gone) changeLog(col, gone, true);
+    DB[col] = (DB[col] || []).filter(d => d.id !== id);
+    this.persist(col, { id }, true); RES_CACHE.clear();
+  },
+  setSettings(s) { s.id = 'main'; changeLog('settings', s, false); DB.settings = s; s.updated_at = nowIso(); s.updated_by = ME ? ME.name : 'System'; this.persist('settings', s); RES_CACHE.clear(); },
+  persist(col, doc, isDelete) {
+    saveLocal();
+    // cloud: write only after the full cloud data has loaded in this session — never push the built-in demo data
+    if (SANDBOX) return;   // sandbox: changes stay in this tab only
+    if (CLOUD && SB) { if (CLOUD_OK) cloudWrite(col, doc, isDelete); else console.warn('Cloud write blocked (data not loaded):', col, doc.id); }
+  },
+  loadLocal() {
+    if (CLOUD) { localStorage.removeItem(DB_KEY); DB = seedData(true); COLS.forEach(c => { DB[c] = []; }); snapAll(); return; }   // nothing usable until cloudLoad
+    try { DB = JSON.parse(localStorage.getItem(DB_KEY) || 'null'); } catch (e) { DB = null; }
+    if (!DB || !DB.settings) { DB = seedData(); saveLocal(); }
+    COLS.forEach(c => { if (!DB[c]) DB[c] = []; });
+    snapAll();
+  }
+};
+
+/* ---- cloud (Supabase): one generic table nx_docs(collection, id, data) ---- */
+let pendingWrites = 0;
+let REAUTH = false;
+let CLOUD_OK = false;   // true only once every page of the cloud data has loaded
+async function reauth() {
+  if (REAUTH) return; REAUTH = true;
+  try { const { data } = await SB.auth.refreshSession(); if (data && data.session) { REAUTH = false; return; } } catch (e) { }
+  const d = document.createElement('div'); d.className = 'dlg-back'; d.id = 'reDlg';
+  d.innerHTML = '<div class="dlg" style="max-width:380px"><div class="dlg-h">Sign in again</div><div class="small">Your login has ended. Unsaved changes are kept and save as soon as you sign in.</div>' +
+    '<table class="jckv"><tr><td class="k">Email</td><td class="v"><input id="reEm" value="' + esc((ME && ME.email) || '') + '"></td></tr><tr><td class="k">Password</td><td class="v"><input id="rePw" type="password"></td></tr></table>' +
+    '<div class="dlg-f"><span id="reMsg" class="small late-txt"></span><span class="grow"></span><button class="btn primary" id="reGo">Sign in</button></div></div>';
+  document.body.appendChild(d); $('#rePw', d).focus();
+  const go = async () => {
+    const { error } = await SB.auth.signInWithPassword({ email: $('#reEm', d).value.trim().toLowerCase(), password: $('#rePw', d).value });
+    if (error) { $('#reMsg', d).textContent = error.message; return; }
+    d.remove(); REAUTH = false; flash('Signed in — saving your changes.'); retryNow();
+  };
+  $('#reGo', d).onclick = go; $('#rePw', d).addEventListener('keydown', ev => { if (ev.key === 'Enter') go(); });
+}
+const RETRY_Q = new Map();   // failed writes: key col|id -> {col, id, isDelete}
+function syncBadge() { const s = $('#syncState'); if (s) s.textContent = SANDBOX ? 'SANDBOX · nothing is saved' : DEMO_SHARED ? 'DEMO' : CLOUD ? (pendingWrites ? 'Saving…' : RETRY_Q.size ? RETRY_Q.size + ' change(s) retrying…' : 'Synced') : DEMO ? 'DEMO' : 'Local mode'; }
+// cloud writes go one after the other, in the order the app made them (a GRN is saved before the gate entry it closes)
+let WRITE_Q = Promise.resolve();
+function cloudWrite(col, doc, isDelete) { pendingWrites++; syncBadge(); const snap = isDelete ? doc : JSON.parse(JSON.stringify(doc)); const run = WRITE_Q.then(() => cloudWriteNow(col, snap, isDelete)); WRITE_Q = run.catch(() => {}); return run; }
+async function cloudWriteNow(col, doc, isDelete) {
+  try {
+    const q = isDelete ? SB.from(TBL).delete().eq('collection', col).eq('id', doc.id)
+      : SB.from(TBL).upsert({ collection: col, id: doc.id, data: doc, updated_at: nowIso() });
+    const { error } = await q; if (error) throw error;
+    RETRY_Q.delete(col + '|' + doc.id);
+  } catch (e) {
+    // "NX: …" = the database refused the change on purpose (a business rule): do not retry, take the cloud copy back
+    if (/^NX:/.test(String(e.message || ''))) {
+      RETRY_Q.delete(col + '|' + doc.id); pendingWrites--; syncBadge();
+      // another user took this document number a moment ago: take the next number and save again
+      if (/number .* already taken/i.test(e.message) && (col === 'purchase_orders' || col === 'grns') && !isDelete) {
+        const live = Store.get(col, doc.id);
+        if (live) { try { SYNC_BUSY = false; await cloudSync(); } catch (e2) { } const was = live.no; live.no = col === 'grns' ? reserveGrnNo() : fyNo('purchase_orders', 'PO', 3); Store.put(col, live); audit(col === 'grns' ? 'grn.renumber' : 'po.renumber', live.no, 'was ' + was + ' — the number was taken'); flash('Number ' + esc(was) + ' was taken — saved as ' + esc(live.no) + '.', 'err'); return; }
+      }
+      flash('Not saved — ' + esc(String(e.message).replace(/^NX:\s*/, '')), 'err'); cloudReload(col, doc.id); return;
+    }
+    RETRY_Q.set(col + '|' + doc.id, { col, id: doc.id, isDelete: !!isDelete });
+    // "permission denied" = the login has ended (signed out elsewhere / expired): renew it or ask for the password
+    if (/permission denied|JWT|not authenticated/i.test(String(e.message || e)) || e.code === '42501' || e.code === 'PGRST301') reauth();
+    else flash('Cloud save failed: ' + esc(e.message || e) + ' — will retry automatically; keep this page open.', 'err');
+  }
+  pendingWrites--; syncBadge();
+}
+// after a refused write: put the cloud's copy of that record back locally (or drop it if the cloud never had it)
+async function cloudReload(col, id) {
+  try {
+    const { data, error } = await SB.from(TBL).select('collection,id,data,updated_at').eq('collection', col).eq('id', id).maybeSingle();
+    if (error) return;
+    if (data) cloudApply(col, id, data.data, data.updated_at, false);
+    else { const list = DB[col]; if (list) { const i = list.findIndex(d => d.id === id); if (i >= 0) list.splice(i, 1); } SNAP.delete(col + '|' + id); }
+    RES_CACHE.clear(); if (typeof route === 'function') route();
+  } catch (e) { console.warn(e); }
+}
+// retry failed writes every 20s (sends the latest local copy)
+function retryNow() {
+  if (!CLOUD || !SB || !RETRY_Q.size || REAUTH) return;
+  Array.from(RETRY_Q.values()).forEach(r => {
+    const doc = r.isDelete ? { id: r.id } : (r.col === 'settings' ? DB.settings : Store.get(r.col, r.id));
+    if (doc) cloudWrite(r.col, doc, r.isDelete); else RETRY_Q.delete(r.col + '|' + r.id);
+  });
+}
+setInterval(retryNow, 20000);
+window.addEventListener('beforeunload', ev => { if (CLOUD && (pendingWrites > 0 || RETRY_Q.size)) { ev.preventDefault(); ev.returnValue = ''; } });
+// what this browser holds from the cloud: collection|id -> updated_at
+const CL_VER = new Map();
+function cloudApply(col, id, data, ver, del) {
+  const k = col + '|' + id;
+  if (RETRY_Q.has(k)) return false;                 // my own unsaved change wins until it is saved
+  if (del) { CL_VER.delete(k); if (col === 'settings') return false; const list = DB[col]; if (!list) return false; const i = list.findIndex(d => d.id === id); if (i < 0) return false; list.splice(i, 1); SNAP.delete(k); return true; }
+  if (ver) CL_VER.set(k, ver);
+  if (col === 'settings') { DB.settings = data; SNAP.set('settings|main', JSON.stringify(data)); return true; }
+  const list = DB[col]; if (!list) return false;
+  const i = list.findIndex(d => d.id === id); if (i >= 0) list[i] = data; else list.push(data);
+  SNAP.set(k, JSON.stringify(data)); return true;
+}
+function cloudRefreshView() { RES_CACHE.clear(); const a = document.activeElement; if (!a || !/INPUT|TEXTAREA|SELECT/.test(a.tagName)) { renderNav(); route(); } }
+// safety net besides the live channel: every 90 s (and when the tab comes back) compare with the cloud and pull what changed
+let SYNC_BUSY = false;
+async function cloudSync() {
+  if (!CLOUD || !SB || !CLOUD_OK || SANDBOX || SYNC_BUSY || !ME || pendingWrites) return; SYNC_BUSY = true;
+  try {
+    const seen = new Set(); const changed = {}; let from = 0; const page = 1000;
+    for (;;) {
+      const { data, error } = await SB.from(TBL).select('collection,id,updated_at').order('collection').order('id').range(from, from + page - 1);
+      if (error) throw error;
+      data.forEach(r => { const k = r.collection + '|' + r.id; seen.add(k); if ((r.collection === 'settings' || COLS.includes(r.collection)) && CL_VER.get(k) !== r.updated_at) (changed[r.collection] = changed[r.collection] || []).push(r.id); });
+      if (data.length < page) break; from += page;
+    }
+    let n = 0;
+    for (const [col, ids] of Object.entries(changed)) for (let i = 0; i < ids.length; i += 150) {
+      const { data, error } = await SB.from(TBL).select('collection,id,data,updated_at').eq('collection', col).in('id', ids.slice(i, i + 150));
+      if (error) throw error; data.forEach(r => { if (cloudApply(r.collection, r.id, r.data, r.updated_at)) n++; });
+    }
+    Array.from(CL_VER.keys()).forEach(k => { if (!seen.has(k)) { const j = k.indexOf('|'); if (cloudApply(k.slice(0, j), k.slice(j + 1), null, null, true)) n++; } });
+    if (n) cloudRefreshView();
+  } catch (e) { console.warn('sync', e); }
+  SYNC_BUSY = false;
+}
+setInterval(cloudSync, 90000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') cloudSync(); });
+async function cloudLoad() {
+  CLOUD_OK = false; CL_VER.clear();
+  const out = { settings: null }; COLS.forEach(c => out[c] = []);
+  let from = 0; const page = 1000;
+  for (;;) {
+    // a fixed order, so pages never skip or repeat rows while others are saving
+    const { data, error } = await SB.from(TBL).select('collection,id,data,updated_at').order('collection').order('id').range(from, from + page - 1);
+    if (error) throw error;
+    data.forEach(r => { CL_VER.set(r.collection + '|' + r.id, r.updated_at); if (r.collection === 'settings') out.settings = r.data; else if (out[r.collection]) out[r.collection].push(r.data); });
+    if (data.length < page) break; from += page;
+  }
+  if (!out.settings) {                      // empty project → seed masters (no demo orders) and push
+    const seed = seedData(!DEMO);                // demo: the full sample company
+    DB = seed; saveLocal(); CLOUD_OK = true;
+    const rows = [{ collection: 'settings', id: 'main', data: seed.settings }].concat(COLS.flatMap(c => (seed[c] || []).map(d => ({ collection: c, id: d.id, data: d }))));
+    for (let i = 0; i < rows.length; i += 400) await SB.from(TBL).upsert(rows.slice(i, i + 400));
+  } else {
+    if (!out.users.length) throw new Error('No users came back from the cloud. Check the internet and try again.');
+    DB = out; saveLocal(); CLOUD_OK = true;
+  }
+  snapAll();
+  SB.channel(TBL).on('postgres_changes', { event: '*', schema: 'public', table: TBL }, p => {
+    const r = p.new && p.new.collection ? p.new : p.old; if (!r || !r.collection) return;
+    cloudApply(r.collection, r.id, p.new && p.new.data, p.new && p.new.updated_at, p.eventType === 'DELETE');
+    RES_CACHE.clear();
+    const a = document.activeElement;
+    if (!a || !/INPUT|TEXTAREA|SELECT/.test(a.tagName)) { renderNav(); route(); }
+  }).subscribe();
+}
+
+/* ---- numbering ---- */
+// Financial-year numbering (Apr–Mar), e.g. ZF/PO/2026-27/001 — same style as the old Nexus IMS.
+function fyNo(col, tag, width) {
+  const co = (settings().company_code || 'ZF').toUpperCase();
+  const d = new Date(); const y = d.getMonth() >= 3 ? d.getFullYear() : d.getFullYear() - 1;
+  const head = co + '/' + tag + '/' + y + '-' + String((y + 1) % 100).padStart(2, '0') + '/';
+  const max = Store.all(col).reduce((m, x) => x.no && x.no.startsWith(head) ? Math.max(m, parseInt(x.no.slice(head.length), 10) || 0) : m, 0);
+  return head + String(max + 1).padStart(width || 3, '0');
+}
+// Approvals (PO approve/reject etc.) need Admin or Manager — plain edit access is not enough.
+function canApprove() { return isAdminRole() || can('approve', 'edit'); }
+function isSuperAdmin() { const r = myRole(); return !!(r && r.system); }
+function nextNo(col, prefix) {
+  const yr = new Date().getFullYear(); const head = prefix + '-' + yr + '-';
+  const max = Store.all(col).reduce((m, d) => d.no && d.no.startsWith(head) ? Math.max(m, parseInt(d.no.slice(head.length), 10) || 0) : m, 0);
+  return head + String(max + 1).padStart(4, '0');
+}
+function audit(action, ref, detail) {
+  Store.put('audit', { id: uid(), at: nowIso(), user: ME ? ME.name : 'system', action, ref: ref || '', detail: detail || '' });
+}
+
+/* ---- dropdown options: managed in Settings, not hardcoded ---- */
+const DEF_OPTS = {
+  category: ['Shoes', 'Slider', 'Clogs', 'V Shape', 'Eva Slider'],
+  channel: ['Online', 'Offline', 'Export'],
+  gender: ['Gents', 'Ladies', 'Kids', 'Unisex'],
+  packing: ['Assortment', 'Solid'],
+  prod_line: ['ASSEMBLY LINE 1', 'ASSEMBLY LINE 2', 'CUTTING', 'PACKING LINE 1', 'STITCHING'],
+  process: ['Cutting', 'Stitching', 'Moulding', 'Assembly', 'Finishing', 'Packing'],
+  prod_stage: ['Cutting', 'Moulding', 'Closing', 'Packing'],
+  picker: []
+};
+function optList(key) {
+  const o = (settings().options || {})[key];
+  return (o && o.length) ? o : (DEF_OPTS[key] || []);
+}
+// doer dropdowns: the value is the (unique) doer name, the text also shows full name and department
+function doerLabel(u) { return u.doer + ' — ' + u.name + (u.department ? ' · ' + u.department : ''); }
+function doerOpts(list, val, ph) {
+  return '<option value="">' + esc(ph || '— select —') + '</option>' + list.map(x => { const u = Store.all('users').find(y => y.doer && norm(y.doer) === norm(x));
+    return '<option value="' + esc(x) + '"' + (norm(x) === norm(val || '') ? ' selected' : '') + '>' + esc(u ? doerLabel(u) : x) + '</option>'; }).join('');
+}
+function selOpts(list, val, ph) { return '<option value="">' + esc(ph || '— select —') + '</option>' + list.map(x => '<option' + (norm(x) === norm(val || '') ? ' selected' : '') + '>' + esc(x) + '</option>').join(''); }
+
+/* ================= RBAC ================= */
+const MODULES = [
+  { key: 'dashboard', label: 'Home' },
+  { key: 'tasks', label: 'My Tasks', note: 'Edit = mark own steps done' },
+  { key: 'orders', label: 'Orders', note: 'Edit = punch, edit, priority' },
+  { key: 'purchase', label: 'Purchase', note: 'PO, sourcing, followup' },
+  { key: 'merchant', label: 'Merchant', note: 'Job cards, swatch' },
+  { key: 'store', label: 'Store', note: 'Inward, GRN, issuance, stock, RTV' },
+  { key: 'development', label: 'Development', note: 'Item Creation, BOM' },
+  { key: 'production', label: 'Production', note: 'Requisition, tracker, MRS' },
+  { key: 'accounts', label: 'Accounts', note: 'Invoices, payments' },
+  { key: 'dispatch', label: 'Dispatch' },
+  { key: 'tickets', label: 'Tickets', note: 'Edit = raise & work tickets' },
+  { key: 'checklist', label: 'Checklist', note: 'Edit = add & mark tasks' },
+  { key: 'ea', label: 'EA (Delegation, MOM, Meetings, Follow-ups, Travel, Contacts)', note: 'Edit = all EA work; CEO decisions by Super Admin' },
+  { key: 'tracker', label: 'FMS Tracker', note: 'Edit = mark anyone\'s step, undo' },
+  { key: 'builder', label: 'FMS Builder', note: 'Edit = change & activate flows' },
+  { key: 'masters', label: 'Brands, Articles & Materials' },
+  { key: 'approve', label: 'Approvals (PO, requisition)' },
+  { key: 'excess', label: 'Excess material approval' },
+  { key: 'issue_approve', label: 'Issue approval (Store Incharge)' },
+  { key: 'users', label: 'Users' },
+  { key: 'roles', label: 'Access' },
+  { key: 'settings', label: 'Settings' },
+  { key: 'audit', label: 'Audit Log' }
+];
+let ME = null;
+function myRole() { return ME ? Store.get('roles', ME.role_id) : null; }
+// Departments and designations: taken from Nexus Payroll (staff), shared by every screen.
+const DEF_ORG = [{"dept": "ACCOUNTS", "desigs": ["EXECUTIVE"]}, {"dept": "ACCOUNTS AND FINANCE", "desigs": ["ACCOUNTS EXECUTIVE", "EXECUTIVE", "MANAGER"]}, {"dept": "ADMIN", "desigs": ["EXECUTIVE"]}, {"dept": "DEVELOPMENT", "desigs": ["DESIGNER", "EXECUTIVE", "GRAPHIC DESIGNER", "MANAGER", "STITCHER"]}, {"dept": "DISPATCH", "desigs": ["EXECUTIVE", "OPERATOR"]}, {"dept": "FACILITY", "desigs": ["HOUSEKEEPING STAFF"]}, {"dept": "HR", "desigs": ["EXECUTIVE"]}, {"dept": "MAINTENANCE", "desigs": ["EXECUTIVE", "HELPER"]}, {"dept": "MANAGEMENT", "desigs": ["CEO", "EXECUTIVE ASSISTANT"]}, {"dept": "MERCHANDISING", "desigs": ["INTERN", "JUNIOR MERCHANT", "SR MERCHANT"]}, {"dept": "MIS", "desigs": ["EXECUTIVE"]}, {"dept": "OPERATIONS", "desigs": ["HEAD OF OPERATIONS", "MIS EXECUTIVE", "PC"]}, {"dept": "PLANNING", "desigs": ["MANAGER"]}, {"dept": "PPC", "desigs": ["EXECUTIVE", "HEAD"]}, {"dept": "PRODUCTION", "desigs": ["HELPER", "MANAGER", "MOULDER", "OPERATOR", "PRODUCTION INCHARGE", "QC PERSON", "SPOTTER", "SUPERVISOR"]}, {"dept": "PURCHASE", "desigs": ["EXECUTIVE", "HEAD", "MANAGER"]}, {"dept": "QUALITY", "desigs": ["EXECUTIVE", "QC PERSON"]}, {"dept": "STORE", "desigs": ["DATA ENTRY OPERATOR", "EXECUTIVE", "MANAGER"]}];
+function orgList() { const o = settings().org; return o && o.length ? o : DEF_ORG; }
+// merchants see only their own brands (CDB merchandiser / junior merchandiser); Admin and Super Admin see all
+function brandScope() {
+  if (!ME || isAdminRole() || typeof myBrandNames !== 'function') return null;
+  const b = myBrandNames(); if (!b.length && !/MERCH/i.test(ME.department || '')) return null;
+  return new Set(b.map(norm));
+}
+function brandOk(name, scope) { const s = scope === undefined ? brandScope() : scope; return !s || s.has(norm(name || '')); }
+function isAdminRole() { const r = myRole(); return !!(r && (r.system || r.admin)); }
+function accessOf() { const a = settings().access; return a && a.dept ? a : defaultAccess(); }
+// Access for a User: designation setting wins over the department setting.
+function accessLevel(dept, desig, mod) {
+  const a = accessOf(); const d = (a.desig || {})[(dept || '') + '|' + (desig || '')];
+  if (d && d[mod]) return d[mod];
+  return ((a.dept || {})[dept || ''] || {})[mod] || 'none';
+}
+// Screen access: every screen can be set on its own (key 's:<screen>'); otherwise it follows its module.
+// Order: designation screen > designation module > department screen > department module.
+function navScreens() { const out = []; NAV.forEach(g => (g.items || [g]).forEach(i => { if (i.v && i.mod && !out.some(x => x.v === i.v)) out.push({ v: i.v, l: i.l, mod: i.mod, menu: g.menu || '' }); })); return out; }
+function screenMod(v) { const s = navScreens().find(x => x.v === v); return s ? s.mod : (VIEWS[v] || {}).mod; }
+function screenAccess(dept, desig, v, mod) {
+  const a = accessOf(); const g = (a.desig || {})[(dept || '') + '|' + (desig || '')] || {}; const d = (a.dept || {})[dept || ''] || {}; const k = 's:' + v;
+  return g[k] || g[mod] || d[k] || d[mod] || ((a.role_user || {})[k]) || 'none';
+}
+// Admin role: full access unless a screen / module is limited in Access (settings.access.admin)
+function adminAccess(v, mod) { const a = accessOf().admin || {}; return (v && a['s:' + v]) || a[mod] || 'edit'; }
+const lvlOk = (p, level) => level === 'edit' ? p === 'edit' : (p === 'view' || p === 'edit');
+// One answer for "what does this person get on this screen, and why":
+// Person › Designation › Department › Role (the first one that is set wins); Super Admin always has everything.
+function accessFor(u, v, mod, skipPerson) {
+  const r = (u && Store.get('roles', u.role_id)) || {}; const a = accessOf(); const k = 's:' + v;
+  if (r.system) return { lv: 'edit', src: 'Super Admin' };
+  const pu = skipPerson ? '' : ((a.user || {})[u.id] || {})[k]; if (pu) return { lv: pu, src: 'Person' };
+  if (r.admin) { const ad = a.admin || {}; return { lv: ad[k] || ad[mod] || 'edit', src: 'Role · Admin' }; }
+  // an old module-wide "No access" counts as not set, so the level below can still give the screen
+  const mv = o => o[k] || (o[mod] && o[mod] !== 'none' ? o[mod] : '');
+  const g = (a.desig || {})[(u.department || '') + '|' + (u.designation || '')] || {}; if (mv(g)) return { lv: mv(g), src: 'Designation' };
+  const d = (a.dept || {})[u.department || ''] || {}; if (mv(d)) return { lv: mv(d), src: 'Department' };
+  const ru = (a.role_user || {})[k]; if (ru) return { lv: ru, src: 'Role · User' };
+  return { lv: 'none', src: 'Not set' };
+}
+function canScreen(v, level) {
+  const mod = screenMod(v); if (!mod) return false;
+  const r = myRole(); if (!r) return false;
+  if (mod === 'users') return !!r.system;
+  if (r.perms && !r.system && !r.admin) return can(mod, level);
+  return lvlOk(accessFor(ME, v, mod).lv, level);
+}
+function can(mod, level) {             // level: 'view' | 'edit'
+  const r = myRole(); if (!r) return false;
+  if (mod === 'users') return !!r.system;           // user management: Super Admin only
+  if (r.system) return true;
+  // inside a screen, the screen's own setting decides for its module
+  const cv = typeof curView === 'function' ? curView().v : ''; const onScreen = cv && screenMod(cv) === mod;
+  if (onScreen && !r.perms) return lvlOk(accessFor(ME, cv, mod).lv, level);
+  if (r.admin) return lvlOk(adminAccess('', mod), level);
+  const p = r.perms ? (r.perms[mod] || 'none') : accessLevel(ME.department, ME.designation, mod);
+  return level === 'edit' ? p === 'edit' : (p === 'view' || p === 'edit');
+}
+function requirePerm(mod, level) { if (can(mod, level)) return true; flash('You do not have ' + level + ' access to ' + mod + '.', 'err'); return false; }
+function isMyDoer(doer) { return !!(ME && doer && norm(doer) === norm(ME.doer)); }
+
+/* ================= FMS glue ================= */
+const RES_CACHE = new Map();
+function settings() { return DB.settings; }
+function calendar() {
+  const c = settings().calendar || {};
+  return Object.assign({}, c, { holidays: (settings().holidays || []).map(h => h.date) });
+}
+function calInfo() { return FMSEngine.makeCalendar(calendar()); }
+function activeProcess(code) { return Store.all('processes').find(p => p.code === (code || 'o2d') && p.active) || null; }
+function specOf(proc) { return proc ? Object.assign({}, proc.spec, { calendar: calendar() }) : null; }
+function orderTotals(o) {
+  const qty = (o.lines || []).reduce((s, l) => s + num(l.qty), 0);
+  return { qty };
+}
+function dispatchedQty(o) {
+  const per = (o.lines || []).map(() => 0);
+  Store.all('dispatches').filter(d => d.order_id === o.id && !d.cancelled).forEach(d => (d.lines || []).forEach(l => { if (per[l.idx] != null) per[l.idx] += num(l.qty); }));
+  const total = per.reduce((a, b) => a + b, 0);
+  return { per, total, pending: Math.max(0, orderTotals(o).qty - total) };
+}
+function orderFields(o) {
+  const t = orderTotals(o);
+  return Object.assign({}, o.extra || {}, {
+    created_at: o.created_at, order_no: o.no, brand: o.customer_name, category: o.category,
+    channel: o.channel, priority: o.priority || '', po_expiry_date: o.po_expiry_date,
+    order_date: o.order_date, qty: t.qty,
+    brand_merchant: brandPeople(o.customer_name).merchant, brand_junior_merchant: brandPeople(o.customer_name).junior
+  });
+}
+// FMS instances: sales orders (O2D) and sample development records share the same step engine
+function fmsDocs() { return Store.all('orders').concat(Store.all('samples')); }
+function fmsGet(id) { return Store.get('orders', id) || Store.get('samples', id); }
+function fmsPut(o) { Store.put(o.kind === 'sample' ? 'samples' : 'orders', o); }
+// Other colours of an article wait for its first (lead) sample: they start when the lead passes without
+// rework (Changes Required = No), after the lead's rework submission, or when someone releases them by hand.
+function sampleLeadClearedAt(o) {
+  if ((o.extra || {}).manual_release) return o.extra.manual_release;
+  const L = o.lead_id && Store.get('samples', o.lead_id); if (!L) return '';
+  const a = L.actuals || {}; const ch = (L.extra || {}).changes_required;
+  if (ch === 'No') return a.changes || ''; if (ch === 'Yes') return a.r_submission || '';
+  return '';
+}
+// merchant and junior merchant of a brand (CDB); no junior set → the merchant does those steps
+function brandPeople(brand) { const c = Store.all('customers').find(x => norm(x.name) === norm(brand)) || {}; const m = String(c.merchandiser || '').trim(); return { merchant: m, junior: String(c.junior_merchandiser || '').trim() || m }; }
+// doers that can come from the order without being a field of the FMS
+const FMS_SYS_FIELDS = [{ key: 'brand_merchant', label: 'Brand Merchandiser (CDB)', type: 'text', source: 'system' }, { key: 'brand_junior_merchant', label: 'Brand Junior Merchandiser (CDB)', type: 'text', source: 'system' }];
+function sampleFields(o) {
+  const L = o.lead_id && Store.get('samples', o.lead_id);
+  return Object.assign({}, o.extra || {}, { follows: L ? L.no : '', lead_cleared_at: sampleLeadClearedAt(o), created_at: o.created_at, order_no: o.no, sample_no: o.no, batch_no: o.batch_no, brand: o.brand, article: o.article, colour: o.colour, size: o.size, gender: o.gender, category: o.category, status: o.status || '', brand_merchant: brandPeople(o.brand).merchant, brand_junior_merchant: brandPeople(o.brand).junior });
+}
+function resolveOrder(o) {
+  const lead = o.lead_id && Store.get('samples', o.lead_id);
+  const key = o.id + '|' + o.updated_at + (lead ? '|' + lead.updated_at + '|' + JSON.stringify([lead.actuals, lead.extra, lead.status]) : '');
+  if (RES_CACHE.has(key)) return RES_CACHE.get(key);
+  const proc = Store.get('processes', o.process_id); const spec = specOf(proc);
+  let res = null;
+  if (spec) {
+    try { res = FMSEngine.resolveInstance(spec, { fields: o.kind === 'sample' ? sampleFields(o) : orderFields(o), actuals: o.actuals || {} }, new Date()); res.spec = spec; }
+    catch (e) { console.error(e); }
+  }
+  RES_CACHE.set(key, res); return res;
+}
+// Order-level state for lists.
+function orderState(o) {
+  const r = resolveOrder(o);
+  const dq = dispatchedQty(o);
+  if (o.priority === 'Cancelled') return { label: 'Cancelled', cls: 'Cancelled', open: false };
+  if (dq.pending <= 0 && dq.total > 0) return { label: 'Dispatched', cls: 'Done', open: false };
+  if (o.priority === 'On Hold') return { label: 'On Hold', cls: 'OnHold', open: true };
+  if (!r) return { label: 'No flow', cls: 'NA', open: true };
+  const open = r.order.map(id => r.steps[id]).filter(s => s.status === 'Pending' || s.status === 'Late')
+    .sort((a, b) => a.planned - b.planned);
+  const late = open.filter(s => s.status === 'Late');
+  const cur = late[0] || open[0];
+  return {
+    label: cur ? cur.name : (dq.total ? 'Part dispatched' : 'Waiting'), cls: late.length ? 'Late' : (cur ? 'Pending' : 'Waiting'),
+    open: true, late: late.length, cur, partial: dq.total > 0
+  };
+}
+// All actionable steps across open orders.
+function allOpenSteps() {
+  const out = [];
+  fmsDocs().forEach(o => {
+    if (o.priority === 'Cancelled') return;
+    const r = resolveOrder(o); if (!r) return;
+    r.order.forEach(id => { const s = r.steps[id]; if (s.status === 'Pending' || s.status === 'Late') out.push({ order: o, step: s, def: r.spec.steps.find(x => x.id === id), spec: r.spec }); });
+  });
+  return out.sort((a, b) => a.step.planned - b.step.planned);
+}
+function isDispatchStep(def, spec) { return def && spec && spec.process && def.id === spec.process.endStep; }
+function canMarkStep(def, s, spec) {
+  if (isDispatchStep(def, spec)) return false;                 // closed by the dispatch module
+  if (can('tracker', 'edit')) return true;
+  return can('tasks', 'edit') && isMyDoer(s.doer);
+}
+function markStepDone(orderId, stepId, note, capVal) {
+  const o = fmsGet(orderId); if (!o) return;
+  const r = resolveOrder(o); const s = r && r.steps[stepId]; const def = r && r.spec.steps.find(x => x.id === stepId);
+  if (!s || !(s.status === 'Pending' || s.status === 'Late')) { flash('This step is not open.', 'err'); return; }
+  if (!canMarkStep(def, s, r.spec)) { flash('Only ' + esc(s.doer) + ' (or a tracker editor) can close this step.', 'err'); return; }
+  if (def && def.capture && !capVal) { flash('Enter ' + esc(fieldLabelOf(r.spec, def.capture.field)) + ' to close this step.', 'err'); return; }
+  if (def && def.capture) { o.extra = o.extra || {}; o.extra[def.capture.field] = capVal; }
+  o.actuals = o.actuals || {}; o.actuals[stepId] = nowIso();
+  if (note) { o.notes = o.notes || {}; o.notes[stepId] = note; }
+  o.done_by = o.done_by || {}; o.done_by[stepId] = ME.name;
+  fmsPut(o);
+  audit('step.done', o.no, s.name + (s.delayMinutes ? ' (late ' + fmtDelay(s.delayMinutes) + ')' : '') + (note ? ' — ' + note : ''));
+  flash(esc(s.name) + ' marked done for ' + esc(o.no) + '. <a data-act="undo-step" data-o="' + esc(o.id) + '" data-s="' + esc(stepId) + '">Undo</a>');
+}
+function fieldLabelOf(spec, key) { const f = ((spec && spec.fields) || []).find(x => x.key === key); return f ? f.label : key; }
+/* ---- FMS auto-close rules: a step set to "Closed by: another system" closes itself when its rule is met ---- */
+// Each rule returns the time the event happened, or null while it has not.
+const FMS_RULES = [
+  { id: 'field_filled', label: 'An order field is filled', param: true,
+    check: (o, f) => { const v = (o.extra || {})[f] || orderFields(o)[f]; return v ? nowIso() : null; } },
+  { id: 'job_card_created', label: 'Job cards made for every order line',
+    check: o => { const js = (o.lines || []).map(l => l.jc_no && jcBy(l.jc_no)); return js.length && js.every(Boolean) ? js.map(j => j.at || '').sort().pop() || nowIso() : null; } },
+  { id: 'bom_created', label: 'BOM made for every order line',
+    check: o => { if (typeof jcBomFor !== 'function') return null; const bs = (o.lines || []).map(l => jcBomFor(l.article, l.colour, o.customer_name || o.brand || '', l.style || ''));
+      if (!bs.length || !bs.every(Boolean)) return null; return bs.map(b => b.at || b.created_at || '').sort().pop() || nowIso(); } },
+  { id: 'material_received', label: 'All job card material received (PO qty fully received)',
+    check: o => {
+      const js = (o.lines || []).map(l => l.jc_no && jcBy(l.jc_no)).filter(Boolean); if (!js.length) return null;
+      const codes = Array.from(new Set(js.flatMap(j => (j.lines || []).map(l => norm(l.material)))));
+      const pos = Store.all('purchase_orders').filter(p => !p.cancelled && p.approval === 'Approved');
+      const ok = codes.length && codes.every(c => { const ls = pos.flatMap(p => p.lines.map((l, k) => ({ p, l, k })).filter(x => norm(x.l.material) === c)); return ls.length && ls.every(x => poLinePending(x.p, x.l, x.k) <= 0); });
+      if (!ok) return null;
+      return Store.all('grns').filter(g => g.lines.some(l => codes.includes(norm(l.material)))).map(g => g.at || g.date).sort().pop() || nowIso();
+    } },
+  { id: 'order_dispatched', label: 'Order fully dispatched',
+    check: o => { const d = dispatchedQty(o); return d.total > 0 && d.pending <= 0 ? Store.all('dispatches').filter(x => x.order_id === o.id && !x.cancelled).map(x => x.at || x.date).sort().pop() : null; } }
+];
+let FMS_AUTO_T = 0;
+function fmsAutoRun(force) {
+  if (!force && Date.now() - FMS_AUTO_T < 4000) return; FMS_AUTO_T = Date.now();
+  Store.all('orders').forEach(o => {
+    if (o.priority === 'Cancelled') return;
+    const r = resolveOrder(o); if (!r) return; let changed = false;
+    r.spec.steps.forEach(def => {
+      if (!def.status || def.status.type !== 'auto') return;
+      const s = r.steps[def.id]; if (!s || !(s.status === 'Pending' || s.status === 'Late')) return;
+      const rule = FMS_RULES.find(x => x.id === def.status.rule); if (!rule) return;
+      const at = rule.check(o, def.status.field);
+      if (at) { o.actuals = o.actuals || {}; o.actuals[def.id] = at; o.done_by = o.done_by || {}; o.done_by[def.id] = 'System'; changed = true; }
+    });
+    if (changed) { Store.put('orders', o); RES_CACHE.clear(); }
+  });
+}
+setInterval(() => { if (typeof ME !== 'undefined' && ME) fmsAutoRun(true); }, 60000);
+function undoStep(orderId, stepId) {
+  const o = fmsGet(orderId); if (!o || !o.actuals || !o.actuals[stepId]) return;
+  const r = resolveOrder(o);
+  const justMine = o.done_by && o.done_by[stepId] === ME.name && (Date.now() - new Date(o.actuals[stepId])) < 5 * 60000;
+  if (!justMine && !can('tracker', 'edit')) { flash('Undo needs tracker edit access.', 'err'); return; }
+  const dependents = r.spec.steps.filter(d => (Array.isArray(d.trigger) ? d.trigger : [d.trigger]).some(t => t && t.type === 'afterStep' && t.step === stepId) && o.actuals[d.id]);
+  if (dependents.length) { flash('Cannot undo — next step already done: ' + esc(dependents.map(d => d.name).join(', ')), 'err'); return; }
+  delete o.actuals[stepId];
+  fmsPut(o); audit('step.undo', o.no, r.steps[stepId].name); flash('Undone.'); route();
+}
+
+/* ================= validation of a process spec (browser port of validate_spec.js) ================= */
+function validateSpec(spec) {
+  const errors = [], warns = [];
+  const ids = new Set(); const fieldKeys = new Set((spec.fields || []).map(f => f.key)); fieldKeys.add('created_at'); FMS_SYS_FIELDS.forEach(f => fieldKeys.add(f.key));
+  const tables = spec.doerTables || {};
+  if (!spec.process || !spec.process.id) errors.push('process.id missing');
+  if (!Array.isArray(spec.steps) || !spec.steps.length) errors.push('No steps');
+  (spec.steps || []).forEach((s, i) => {
+    const at = (s.name || s.id || 'step ' + (i + 1));
+    if (!s.id) errors.push(at + ': id missing'); else if (ids.has(s.id)) errors.push(at + ': duplicate id "' + s.id + '"'); ids.add(s.id);
+    if (!s.name) errors.push(at + ': name missing');
+    if (!s.doer) warns.push(at + ': no doer — nobody will see this task');
+    if (s.doer && s.doer.type === 'lookup') {
+      if (!tables[s.doer.table]) errors.push(at + ': doer table "' + s.doer.table + '" not found');
+      if (!fieldKeys.has(s.doer.by)) errors.push(at + ': doer lookup field "' + s.doer.by + '" is not a field');
+    }
+    if (s.doer && s.doer.type === 'field' && !fieldKeys.has(s.doer.field)) errors.push(at + ': doer field "' + s.doer.field + '" is not a field');
+    if (s.capture && !fieldKeys.has(s.capture.field)) errors.push(at + ': asks for field "' + s.capture.field + '" which is not a field');
+    if (s.status && s.status.type === 'auto') { const r = FMS_RULES.find(x => x.id === s.status.rule); if (!r) errors.push(at + ': auto-close rule missing'); else if (r.param && !fieldKeys.has(s.status.field)) errors.push(at + ': "Finishes by itself" — choose which order field (rule: ' + r.label + ')'); }
+    const trig = Array.isArray(s.trigger) ? s.trigger : [s.trigger];
+    if (!trig[0]) errors.push(at + ': trigger missing');
+    trig.forEach((t, j) => {
+      if (!t) return; const tat = t.tat || s.tat;
+      if (t.type === 'afterStep' && !(spec.steps || []).some(x => x.id === t.step)) errors.push(at + ': trigger ' + (j + 1) + ' refers to unknown step "' + t.step + '"');
+      if (t.type === 'afterStep' && t.step === s.id) errors.push(at + ': step cannot trigger itself');
+      if (['beforeDate', 'afterDate', 'external'].includes(t.type) && !fieldKeys.has(t.field)) errors.push(at + ': trigger ' + (j + 1) + ' field "' + t.field + '" is not a field');
+      if (['afterStep', 'instanceStart', 'beforeDate', 'afterDate'].includes(t.type) && !tat) errors.push(at + ': no TAT');
+      if (j < trig.length - 1 && !t.when && !t.orNext) warns.push(at + ': trigger ' + (j + 1) + ' has no condition / fallback, so later triggers are never used');
+    });
+  });
+  if (!errors.length) { try { FMSEngine.topoOrder(spec); } catch (e) { errors.push('Loop in the flow: ' + e.message); } }
+  const walk = (c, at) => { if (!c) return; if (Array.isArray(c)) return c.forEach(x => walk(x, at)); if (c.all) return c.all.forEach(x => walk(x, at)); if (c.any) return c.any.forEach(x => walk(x, at)); if (c.not) return walk(c.not, at); if (c.field && !fieldKeys.has(c.field)) errors.push(at + ': condition uses unknown field "' + c.field + '"'); if ((c.in && !c.in.length) || (c.notIn && !c.notIn.length)) warns.push(at + ': condition on "' + c.field + '" has no values'); };
+  (spec.steps || []).forEach(s => { walk(s.applies, s.name + ' (applies)'); (Array.isArray(s.trigger) ? s.trigger : [s.trigger]).forEach(t => t && walk(t.when, s.name + ' (trigger)')); if (s.doer && s.doer.rules) s.doer.rules.forEach(r => walk(r.when, s.name + ' (doer rule)')); });
+  if (spec.process && spec.process.endStep && !ids.has(spec.process.endStep)) errors.push('End step "' + spec.process.endStep + '" is not a step');
+  const doers = new Set(Store.all('users').map(u => norm(u.doer)));
+  (spec.steps || []).forEach(s => { if (s.doer && (typeof s.doer === 'string' || s.doer.type === 'fixed')) { const n = typeof s.doer === 'string' ? s.doer : s.doer.name; if (n && !doers.has(norm(n))) warns.push(s.name + ': doer "' + n + '" is not linked to any user'); } });
+  return { errors, warns };
+}
+
+/* ================= router & nav ================= */
+const VIEWS = {};      // name -> { mod, render(param) }
+const ACTIONS = {};    // data-act handlers
+const NAV = [
+  { v: 'home', l: 'Home', mod: 'dashboard' },
+  { menu: 'Purchase', items: [
+    { v: 'purchasedash', l: 'Purchase Dashboard', mod: 'purchase' },
+    { v: 'netreq', l: 'Net Requirement', mod: 'purchase' },
+    { v: 'requirements', l: 'Requirements', mod: 'purchase' },
+    { v: 'po', l: 'Purchase Order', mod: 'purchase' },
+    { v: 'poapproval', l: 'PO Approval', mod: 'purchase' },
+    { v: 'priceapproval', l: 'Price Approval', mod: 'purchase' },
+    { v: 'invapproval', l: 'Invoice Approval', mod: 'purchase' },
+    { v: 'vendors', l: 'Vendors', mod: 'purchase' },
+    { v: 'vendorreq', l: 'Vendor Requests', mod: 'purchase' }] },
+  { menu: 'Merchant', items: [
+    { v: 'merchantdash', l: 'Merchant Dashboard', mod: 'merchant' },
+    { v: 'punch', l: 'Punch Order', mod: 'orders', edit: true },
+    { v: 'orders', l: 'Orders', mod: 'orders' },
+    { v: 'jobcards', l: 'Job Card', mod: 'merchant' },
+    { v: 'swatch', l: 'Swatch Approval', mod: 'merchant' },
+    { v: 'jccorrection', l: 'Job Card Correction', mod: 'merchant' },
+    { v: 'customers', l: 'CDB', mod: 'masters' },
+    { v: 'leads', l: 'Lead', mod: 'merchant' }] },
+  { menu: 'Store', items: [
+    { v: 'inward', l: 'Inwarding', mod: 'store' },
+    { v: 'swatchmatch', l: 'QC Check', mod: 'store' },
+    { v: 'grn', l: 'GRN', mod: 'store' },
+    { v: 'grnlist', l: 'GRN Register', mod: 'store' },
+    { v: 'issuance', l: 'Issuance', mod: 'store' },
+    { v: 'stock', l: 'Stock View', mod: 'store' },
+    { v: 'openstock', l: 'Opening Stock', mod: 'store' },
+    { v: 'rejstock', l: 'Rejection Stock', mod: 'store' },
+    { v: 'rtv', l: 'RTV', mod: 'store' }] },
+  { menu: 'Development', items: [
+    { v: 'samplenew', l: 'Sample Entry', mod: 'development', edit: true },
+    { v: 'samples', l: 'Sample Tracker', mod: 'development' },
+    { v: 'itemcreate', l: 'Item Creation', mod: 'development' },
+    { v: 'bom', l: 'BOM', mod: 'development' },
+    { v: 'boms', l: 'Created BOM', mod: 'development' }] },
+  { menu: 'Production', items: [
+    { v: 'planning', l: 'Planning & DPR', mod: 'production' },
+    { v: 'requisition', l: 'Requisition Slip', mod: 'production' },
+    { v: 'prodreport', l: 'Production Report', mod: 'production' },
+    { v: 'mrs', l: 'MRS', mod: 'production' }] },
+  { menu: 'Accounts', items: [
+    { v: 'invoices', l: 'Invoices', mod: 'accounts' }] },
+  { menu: 'Operations', items: [
+    { v: 'alltasks', l: 'Task Tracker', mod: 'tasks' },
+    { v: 'escalations', l: 'Escalations', mod: 'tasks' },
+    { v: 'scorecard', l: 'Scorecard', mod: 'tasks' },
+    { v: 'activity', l: 'Activity List', mod: 'audit' },
+    { v: 'itemconfig', l: 'IC CONFIGURATION', mod: 'development' },
+    { v: 'ea', l: 'EA', mod: 'ea' },
+    { v: 'planactual', l: 'Plan vs Actual', mod: 'audit' },
+    { v: 'tickets', l: 'Raise Ticket', mod: 'tickets' },
+    { v: 'users', l: 'Manage Users', mod: 'users' },
+    { v: 'roles', l: 'Access', mod: 'roles' },
+    { v: 'settings', l: 'Settings', mod: 'settings' },
+    { v: 'audit', l: 'Audit Log', mod: 'audit' },
+    { v: 'history', l: 'Change History', mod: 'audit', sa: true },
+    { v: 'wainbox', l: 'WhatsApp', mod: 'audit' },
+    { v: 'maillog', l: 'Mail Log', mod: 'audit' }] },
+  { menu: 'Dispatch', cnt: 'dispatch', items: [
+    { v: 'dispatch', l: 'Ready to Dispatch', mod: 'dispatch' },
+    { v: 'dispatch', p: 'upcoming', l: 'Upcoming Orders', mod: 'dispatch' },
+    { v: 'dispatch', p: 'history', l: 'Dispatch History', mod: 'dispatch' }] },
+  { menu: 'Task', cnt: 'tasks', items: [
+    { v: 'tasks', l: 'My Tasks', mod: 'tasks' },
+    { v: 'checklist', l: 'Checklist', mod: 'checklist', sa: true },
+    { v: 'builder', l: 'FMS Builder', mod: 'builder' },
+    { dyn: 'fms' }] }
+];
+function curView() { const h = location.hash.replace(/^#\/?/, ''); const [v, ...rest] = h.split('/'); return { v: v || 'home', param: decodeURIComponent(rest.join('/')) }; }
+function go(v, param) { location.hash = '#/' + v + (param ? '/' + encodeURIComponent(param) : ''); }
+function navCounts() {
+  const open = allOpenSteps();
+  const mine = open.filter(x => isMyDoer(x.step.doer));
+  const chk = typeof myChecklistDue === 'function' ? myChecklistDue().length : 0;
+  return {
+    tasks: { n: mine.length + chk, late: mine.some(x => x.step.status === 'Late') },
+    dispatch: { n: readyForDispatch().length, late: false }
+  };
+}
+// inline nav icons (16px, stroke = currentColor) — keeps local mode dependency-free
+const NAV_IC = {
+  Home: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h5v-6h4v6h5V9.5"/>',
+  Purchase: '<circle cx="9" cy="20" r="1.6"/><circle cx="17" cy="20" r="1.6"/><path d="M3 3h2.5l2.2 12h10.6l2.2-8.5H6"/>',
+  Merchant: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"/>',
+  Store: '<path d="M21 8.5 12 3 3 8.5v11h18v-11Z"/><path d="M3 8.5 12 14l9-5.5M12 14v5.5"/>',
+  Development: '<path d="m9 8-5 4 5 4M15 8l5 4-5 4M13 5l-2 14"/>',
+  Production: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.9 1.9M16.6 16.6l1.9 1.9M18.5 5.5l-1.9 1.9M7.4 16.6l-1.9 1.9"/>',
+  Accounts: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h10M7 13h6M7 17h4"/>',
+  Operations: '<path d="M4 7h10M18 7h2M4 17h2M10 17h10M14 4.6v4.8M8 14.6v4.8"/>',
+  Dispatch: '<path d="M1.5 5.5h13v11h-13zM14.5 9.5h4l3 3.5v3.5h-7"/><circle cx="6" cy="18.5" r="1.8"/><circle cx="17.5" cy="18.5" r="1.8"/>',
+  Task: '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12.5 3 3 5.5-6"/>'
+};
+function navIc(name) { const p = NAV_IC[name]; return p ? '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>' : ''; }
+function renderNav() {
+  const { v: cur, param: curP } = curView(); const c = navCounts();
+  const cntHtml = k => k && k.n ? '<span class="cnt' + (k.late ? ' late' : '') + '">' + k.n + '</span>' : '';
+  const itemOk = n => (!n.sa || isSuperAdmin()) && canScreen(n.v, n.edit ? 'edit' : 'view');
+  const itemOn = n => cur === n.v && (n.v === 'dispatch' ? (n.p || '') === (curP || '') : true);
+  let html = '<div class="brand"><img class="logo-mark" src="nexus-mark.png" alt="">Nexus <b>2.0</b></div>';
+  NAV.forEach(n => {
+    if (!n.menu) {
+      if (!itemOk(n)) return;
+      html += '<a href="#/' + n.v + '" class="' + (cur === n.v ? 'on' : '') + '">' + navIc(n.l) + n.l + cntHtml(n.cnt && c[n.cnt]) + '</a>';
+      return;
+    }
+    const items = n.items.flatMap(i => i.dyn === 'fms'
+      ? Store.all('processes').filter(p => p.active).map(p => ({ v: 'tracker', p: p.code, l: 'FMS · ' + p.name, mod: 'tracker' }))
+      : [i]).filter(itemOk);
+    if (!items.length) return;
+    const on = items.some(i => cur === i.v);
+    html += '<div class="menu"><a data-act="menu" class="mbtn ' + (on ? 'on' : '') + '">' + navIc(n.menu) + n.menu + cntHtml(n.cnt && c[n.cnt]) + '<span class="caret">▾</span></a><div class="mdrop">' +
+      items.map(i => '<a href="#/' + i.v + (i.p ? '/' + i.p : '') + '" class="' + (itemOn(i) ? 'on' : '') + '">' + i.l + '</a>').join('') + '</div></div>';
+  });
+  $('#nav').innerHTML = html;
+}
+
+function route() {
+  if (!ME) return;
+  if (CLOUD && typeof camListen === 'function') camListen();
+  const { v, param } = curView(); const view = VIEWS[v];
+  $('#nav').classList.remove('open');
+  if (!view) { go('home'); return; }
+  if (!(screenMod(v) && navScreens().some(x => x.v === v) ? canScreen(v, view.edit ? 'edit' : 'view') : can(view.mod, view.edit ? 'edit' : 'view'))) { setMain('<div class="panel empty">You do not have access to this screen. Ask an admin to update your role.</div>'); renderNav(); return; }
+  renderNav();
+  try { view.render(param); } catch (e) { console.error(e); setMain('<div class="panel">Error: ' + esc(e.message) + '</div>'); }
+}
+
+/* ================= events ================= */
+document.addEventListener('click', ev => {
+  const segBtn = ev.target.closest('.seg button');
+  if (segBtn && !segBtn.disabled) {
+    const s = segBtn.parentElement; if (s.hasAttribute('data-locked')) return;
+    $$('button', s).forEach(b => b.classList.toggle('on', b === segBtn));
+    s.dispatchEvent(new CustomEvent('segchange', { bubbles: true, detail: segBtn.dataset.v }));
+  }
+  const el = ev.target.closest('[data-act]'); if (!el || el.disabled) return;
+  if (el.dataset.confirm && !el.classList.contains('confirm')) {          // inline two-click confirm, no popup
+    ev.preventDefault(); const old = el.textContent; el.classList.add('confirm'); el.textContent = el.dataset.confirm;
+    setTimeout(() => { if (el.isConnected) { el.classList.remove('confirm'); el.textContent = old; } }, 3000); return;
+  }
+  const fn = ACTIONS[el.dataset.act]; if (fn) { ev.preventDefault(); fn(el, ev); }
+});
+ACTIONS['toggle-nav'] = () => $('#nav').classList.toggle('open');
+ACTIONS['menu'] = el => { const m = el.parentElement; const was = m.classList.contains('open'); $$('#nav .menu.open').forEach(x => x.classList.remove('open')); if (!was) m.classList.add('open'); };
+document.addEventListener('click', ev => { if (!ev.target.closest('.menu')) $$('#nav .menu.open').forEach(x => x.classList.remove('open')); }, true);
+ACTIONS['go'] = el => go(el.dataset.v, el.dataset.p);
+ACTIONS['undo-step'] = el => undoStep(el.dataset.o, el.dataset.s);
+ACTIONS['logout'] = async () => { localStorage.removeItem(ME_KEY); if (SB && !DEMO) await SB.auth.signOut({ scope: 'local' }); location.reload(); };   // this device only, other devices stay signed in
+document.addEventListener('keydown', ev => {
+  const typing = /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || '');
+  if (ev.key === '/' && !typing) { ev.preventDefault(); $('#gsearch').focus(); }
+  if (ev.altKey && (ev.key === 'n' || ev.key === 'N') && can('orders', 'edit')) { ev.preventDefault(); go('punch'); }
+  if ((ev.ctrlKey || ev.metaKey) && (ev.key === 's' || ev.key === 'S')) { const b = $('[data-save]'); if (b) { ev.preventDefault(); b.click(); } }
+});
+window.addEventListener('hashchange', route);
+
+/* ================= login ================= */
+async function doLogin(email, pin) {
+  email = norm(email);
+  if (CLOUD && !DEMO) {
+    const { error } = await SB.auth.signInWithPassword({ email, password: pin });
+    if (error) throw new Error(error.message);
+    await cloudLoad();
+  }
+  if (DEMO_SHARED && !CLOUD_OK) await cloudLoad();
+  let u = Store.all('users').find(x => norm(x.email) === email);
+  if (CLOUD && !CLOUD_OK) throw new Error('Data did not load from the cloud. Check the internet and try again.');
+  if (CLOUD && !DEMO && !u && Store.all('users').length && Store.all('users').every(x => x.seed)) {           // first cloud login becomes the admin
+    u = Store.all('users').find(x => x.seed && x.role_id === 'r_admin');
+    u.email = email; u.seed = false; Store.put('users', u);
+  }
+  if (!u) throw new Error('This email is not registered in Nexus. Ask an admin.');
+  if (u.active === false) throw new Error('This user is deactivated.');
+  if (DEMO) { if (String(pin) !== String(u.pin_seed || '1234')) throw new Error('Wrong PIN.'); return u; }
+  if (!CLOUD) {
+    if (u.pin_hash) { if (u.pin_hash !== await hashPin(email, pin)) throw new Error('Wrong PIN.'); }
+    else if (u.pin_seed && u.pin_seed === pin) { u.pin_hash = await hashPin(email, pin); delete u.pin_seed; Store.put('users', u); }
+    else throw new Error('Wrong PIN.');
+  }
+  return u;
+}
+// Migrate old data to the current format (e.g. order lines without a JC no)
+function migrateDb() {
+  let jcMax = 0;
+  const scan = no => { if (no && String(no).startsWith('ZF-')) jcMax = Math.max(jcMax, parseInt(String(no).slice(3), 10) || 0); };
+  Store.all('job_cards').forEach(j => scan(j.no));
+  Store.all('orders').forEach(o => (o.lines || []).forEach(l => scan(l.jc_no)));
+  Store.all('orders').forEach(o => {
+    let changed = false;
+    (o.lines || []).forEach(l => { if (!l.jc_no) { jcMax += 1; l.jc_no = 'ZF-' + String(jcMax).padStart(4, '0'); changed = true; } });
+    // The Job Card No is the order number: replace legacy ORD- numbers
+    if (o.lines && o.lines[0] && o.lines[0].jc_no && o.no !== o.lines[0].jc_no) {
+      const oldNo = o.no;
+      o.no = o.lines[0].jc_no; changed = true;
+      Store.all('job_cards').forEach(j => { if (j.order_no === oldNo) { j.order_no = o.no; Store.put('job_cards', j); } });
+    }
+    if (changed) Store.put('orders', o);
+  });
+  // Backfill customer codes (Customer ID) for records created before codes existed
+  let cMax = 0;
+  Store.all('customers').forEach(c => { const m = /^B(\d+)$/.exec(c.code || ''); if (m) cMax = Math.max(cMax, parseInt(m[1], 10)); });
+  Store.all('customers').forEach(c => { if (!c.code) { cMax += 1; c.code = 'B' + String(cMax).padStart(3, '0'); Store.put('customers', c); } });
+  if (typeof seedItemMasters === 'function') seedItemMasters();
+}
+// cloud data did not load: stop here (never run on the built-in demo data) and offer Retry
+function loadFailed(e, plain) {
+  const l = $('#login'); l.classList.remove('hidden');
+  $('#loginMsg').innerHTML = plain ? '<span class="lg-err">' + esc(plain) + '</span>' : '<span class="lg-err">Data did not load from the cloud (' + esc((e && e.message) || e) + '). Check the internet.</span> <button type="button" class="btn sm primary" onclick="location.reload()">Retry</button>';
+  $('#loginForm').style.display = 'none';
+}
+function startApp(u) {
+  if (CLOUD && !CLOUD_OK) { loadFailed(new Error('not loaded')); return; }
+  if (SANDBOX && !(Store.get('roles', u.role_id) || {}).system) { loadFailed(null, 'Sandbox is for the Super Admin only.'); return; }
+  if (SANDBOX && !SBX_REAL) SBX_REAL = u;
+  ME = u; localStorage.setItem(ME_KEY, u.id);
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  const r = myRole();
+  $('#who').innerHTML = esc(u.name) + ' <span class="muted">· ' + esc(r ? r.name : '') + (u.doer ? ' · ' + esc(u.doer) : '') + '</span>';
+  migrateDb();
+  syncBadge(); sbxBar(); if (!location.hash) go(can('tasks', 'view') && !can('dashboard', 'view') ? 'tasks' : 'home'); route();
+  setInterval(() => { RES_CACHE.clear(); const a = document.activeElement; if (!a || !/INPUT|TEXTAREA|SELECT/.test(a.tagName)) { renderNav(); if (['home', 'tasks', 'tracker'].includes(curView().v)) route(); } }, 60000);
+}
+// Demo: only the demo table; no mail, WhatsApp or any other table
+function demoGuard(sb) {
+  const from0 = sb.from.bind(sb);
+  const none = () => { const f = { select: () => f, eq: () => f, neq: () => f, in: () => f, order: () => f, limit: () => f, single: () => f, insert: () => f, upsert: () => f, update: () => f, delete: () => f, then: (r, j) => Promise.resolve({ data: [], error: { message: 'Demo' } }).then(r, j) }; return f; };
+  sb.from = t => t === 'nx_demo' ? from0(t) : none();
+  Object.defineProperty(sb, 'functions', { value: { invoke: async () => ({ data: null, error: { message: 'Demo — nothing is sent' } }) } });
+}
+// Sandbox: reads only. Every write, mail, WhatsApp or live channel is cut off at the client.
+let SBX_REAL = null;
+function sandboxGuard(sb) {
+  const from0 = sb.from.bind(sb);
+  const blocked = () => { const f = { eq: () => f, in: () => f, select: () => f, single: () => f, order: () => f, limit: () => f, then: (r, j) => Promise.resolve({ data: null, error: { message: 'Sandbox — not saved' } }).then(r, j) }; return f; };
+  sb.from = t => { const q = from0(t); ['insert', 'upsert', 'update', 'delete'].forEach(m => { q[m] = blocked; }); return q; };
+  Object.defineProperty(sb, 'functions', { value: { invoke: async () => ({ data: null, error: { message: 'Sandbox — nothing is sent' } }) } });
+  sb.channel = () => ({ on() { return this; }, subscribe() { return this; } }); sb.removeChannel = () => {};
+}
+// Sandbox: look at the app as any user (Super Admin only)
+function sbxViewAs(id) {
+  const u = id ? Store.get('users', id) : SBX_REAL; if (!u) return;
+  ME = u; const r = myRole();
+  $('#who').innerHTML = esc(u.name) + ' <span class="muted">· ' + esc(r ? r.name : '') + (u.doer ? ' · ' + esc(u.doer) : '') + '</span>';
+  RES_CACHE.clear(); if (typeof HT_UI !== 'undefined') HT_UI.who = ''; go('home'); route(); sbxBar();
+}
+function sbxBar() {
+  if (!SANDBOX || !SBX_REAL) return; let b = $('#sbxBar');
+  if (!b) { b = document.createElement('select'); b.id = 'sbxBar'; b.addEventListener('change', () => sbxViewAs(b.value)); $('#syncState').after(b); }
+  const by = {}; Store.all('users').filter(u => u.active !== false && u.id !== SBX_REAL.id).forEach(u => { (by[u.department || 'No department'] = by[u.department || 'No department'] || []).push(u); });
+  b.innerHTML = '<option value="">View as: ' + esc(SBX_REAL.name) + ' (me)</option>' + Object.keys(by).sort().map(d => '<optgroup label="' + esc(d) + '">' + by[d].sort((x, y) => x.name.localeCompare(y.name)).map(u => '<option value="' + esc(u.id) + '"' + (ME && ME.id === u.id ? ' selected' : '') + '>' + esc(u.name) + (u.designation ? ' · ' + esc(u.designation) : '') + '</option>').join('') + '</optgroup>').join('');
+}
+async function boot() {
+  Store.loadLocal();
+  if (CLOUD) { SB = window.supabase.createClient(CFG.SUPABASE_URL, CFG.SUPABASE_ANON_KEY); if (!DEMO) $('#pinLabel').textContent = 'Password'; if (SANDBOX) sandboxGuard(SB); if (DEMO) demoGuard(SB); }
+  if (DEMO_SHARED) { try { await cloudLoad(); } catch (e) { loadFailed(e); return; } }
+  if (!CLOUD || DEMO) {   // demo / local: pick any demo user to see the app through their eyes (PIN 1234)
+    const us = Store.all('users').filter(u => u.active !== false && (u.pin_seed || DEMO)).sort((x, y) => (x.department || '').localeCompare(y.department || '') || x.name.localeCompare(y.name));
+    $('#loginMsg').innerHTML = '<select id="demoPick" class="demo-pick"><option value="">Login as… (PIN 1234)</option>' + us.map(u => '<option value="' + esc(u.email) + '">' + esc(u.name) + ' — ' + esc(u.department || (Store.get('roles', u.role_id) || {}).name || '') + '</option>').join('') + '</select>';
+    $('#demoPick').addEventListener('change', e => { const f = $('#loginForm'); if (!e.target.value) return; f.email.value = e.target.value; f.pin.value = '1234'; f.requestSubmit(); });
+  }
+  const saved = localStorage.getItem(ME_KEY);
+  if (saved) {
+    if (CLOUD && !DEMO) { const { data } = await SB.auth.getSession(); if (data && data.session) { try { await cloudLoad(); } catch (e) { loadFailed(e); return; } } else localStorage.removeItem(ME_KEY); }
+    const u = (!CLOUD || CLOUD_OK) && Store.get('users', localStorage.getItem(ME_KEY));
+    if (u && u.active !== false) return startApp(u);
+  }
+  // demo: no login page — go straight in as the demo Super Admin
+  if (DEMO) {
+    const da = Store.all('users').find(x => x.active !== false && (Store.get('roles', x.role_id) || {}).system);
+    if (da) return startApp(da);
+  }
+  $('#login').classList.remove('hidden');
+  if (CLOUD && !DEMO) { const db = document.createElement('a'); db.className = 'lg-btn lg-demo'; db.href = '?demo'; db.innerHTML = '<span>Demo</span>'; $('#lgGo').after(db); }
+  const f0 = $('#loginForm'); let rem = ''; try { rem = localStorage.getItem(DEMO ? 'nexus2_demo_email' : 'nexus2_email') || ''; } catch (e) { }
+  if (rem) { f0.email.value = rem; f0.pin.focus(); }
+  $('#lgEye').addEventListener('click', () => { const show = f0.pin.type === 'password'; f0.pin.type = show ? 'text' : 'password'; $('#lgEye').classList.toggle('on', show); f0.pin.focus(); });
+  f0.addEventListener('submit', async ev => {
+    ev.preventDefault(); const f = ev.target; const btn = $('#lgGo'); $('#loginMsg').textContent = ''; btn.disabled = true; btn.classList.add('busy'); btn.firstChild.textContent = 'Signing in…';
+    try {
+      const u = await doLogin(f.email.value, f.pin.value);
+      try { if ($('#lgRem').checked) localStorage.setItem(DEMO ? 'nexus2_demo_email' : 'nexus2_email', f.email.value.trim()); else localStorage.removeItem(DEMO ? 'nexus2_demo_email' : 'nexus2_email'); } catch (e) { }
+      startApp(u);
+    } catch (e) { $('#loginMsg').innerHTML = '<span class="lg-err">' + esc(e.message) + '</span>'; f.pin.select(); }
+    btn.disabled = false; btn.classList.remove('busy'); btn.firstChild.textContent = 'Sign in';
+  });
+}
+
+/* fresh #main per render, so listeners never pile up across screens */
+let SEG_HANDLER = null;
+function setMain(html) {
+  const old = $('#main'); const m = old.cloneNode(false); m.innerHTML = html;
+  try { old.replaceWith(m); }
+  catch (e) { const cur = document.getElementById('main'); if (cur && cur !== m) cur.replaceWith(m); }
+  SEG_HANDLER = null; applyPagination(m); try { fmsAutoRun(); } catch (e) { console.error(e); } return m;
+}
+
+/* ---- table pagination: applied to every .tbl-wrap table after render ---- */
+const PAGE_SIZE = 20;
+// rows per page: a named table (data-pg) first, then the screen, then the default; 0 = no paging. Set in Settings.
+const PG_NAMED = { home_tasks: 'Home · My tasks', home_requests: 'Home · My requests', sa_excess: 'Super Admin Home · Excess approvals', sa_po: 'Super Admin Home · PO approvals', sa_esc2: 'Super Admin Home · 2nd escalations', sa_score: 'Super Admin Home · MIS score', sa_doer: 'Super Admin Home · Held up by person', sa_proc: 'Super Admin Home · Slow processes' };
+function pageSizeOf(tbl) {
+  const p = (typeof DB !== 'undefined' && DB.settings && DB.settings.page_size) || {}; const v = curView().v;
+  const pick = [tbl.dataset.pg, v, '_default'].find(k => k && p[k] != null && p[k] !== '');
+  return pick ? num(p[pick]) : PAGE_SIZE;
+}
+const PAGER_STATE = new Map();   // hash|tableIndex -> current page
+// every list table gets Excel-style filter / sort on its header and paging (xfilter.js)
+function applyPagination(root) {
+  root.querySelectorAll('.tbl-wrap > table').forEach((tbl, ti) => { try { xTable(tbl, ti); } catch (e) { console.error(e); } });
+}
+function onSeg(fn) { SEG_HANDLER = fn; }
+document.addEventListener('segchange', e => { if (SEG_HANDLER && e.target.closest('#main') && !e.target.hasAttribute('data-own')) SEG_HANDLER(e); });
+
+/* ---- GST No (GSTIN): 2-digit state code + PAN (5 letters, 4 digits, 1 letter) + entity no + Z + check character ---- */
+const GST_STATES = { '01': 'Jammu & Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab', '04': 'Chandigarh', '05': 'Uttarakhand', '06': 'Haryana', '07': 'Delhi', '08': 'Rajasthan', '09': 'Uttar Pradesh', '10': 'Bihar', '11': 'Sikkim', '12': 'Arunachal Pradesh', '13': 'Nagaland', '14': 'Manipur', '15': 'Mizoram', '16': 'Tripura', '17': 'Meghalaya', '18': 'Assam', '19': 'West Bengal', '20': 'Jharkhand', '21': 'Odisha', '22': 'Chhattisgarh', '23': 'Madhya Pradesh', '24': 'Gujarat', '26': 'Dadra & Nagar Haveli and Daman & Diu', '27': 'Maharashtra', '29': 'Karnataka', '30': 'Goa', '31': 'Lakshadweep', '32': 'Kerala', '33': 'Tamil Nadu', '34': 'Puducherry', '35': 'Andaman & Nicobar Islands', '36': 'Telangana', '37': 'Andhra Pradesh', '38': 'Ladakh', '97': 'Other Territory' };
+function stateNames() { return Array.from(new Set(Object.values(GST_STATES))).sort(); }
+function gstinError(g) {
+  g = String(g || '').trim().toUpperCase();
+  if (!g) return '';
+  if (g.length !== 15) return 'GST No must be exactly 15 characters (now ' + g.length + ').';
+  if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(g)) return 'GST No format is wrong — it should look like 08ABCDE1234F1Z5.';
+  if (!GST_STATES[g.slice(0, 2)]) return 'GST No starts with ' + g.slice(0, 2) + ' — that is not a valid state code.';
+  const A = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'; let sum = 0;
+  for (let i = 0; i < 14; i++) { const p = A.indexOf(g[i]) * (i % 2 ? 2 : 1); sum += Math.floor(p / 36) + p % 36; }
+  if (A[(36 - sum % 36) % 36] !== g[14]) return 'GST No is not valid (last character does not match) — check for a typing mistake.';
+  return '';
+}
+function gstState(g) { return GST_STATES[String(g || '').slice(0, 2)] || ''; }
+function mobileError(m) { m = String(m || '').trim(); return !m || /^[6-9][0-9]{9}$/.test(m) ? '' : 'Mobile No. must be 10 digits starting with 6–9.'; }
+function emailSyntaxError(e) { e = String(e || '').trim(); return !e || /^[^@\s,;<>"]+@[^@\s,;<>"]+\.[A-Za-z]{2,}$/.test(e) ? '' : 'Email ID is not valid.'; }
